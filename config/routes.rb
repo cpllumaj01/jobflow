@@ -5,6 +5,8 @@ Rails.application.routes.draw do
   get "sign_up" => "registrations#new", as: :sign_up
   post "sign_up" => "registrations#create"
 
+  resources :customers
+
   root "dashboard#index"
 
   get "up" => "rails/health#show", as: :rails_health_check

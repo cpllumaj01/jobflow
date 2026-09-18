@@ -1,0 +1,17 @@
+johnson:
+  user: one
+  name: Johnson Residence
+  contact_name: Sarah Johnson
+  email: sarah@example.com
+  phone: 203-555-0101
+  address: 123 Main Street
+  notes: Kitchen renovation customer
+
+fairfield:
+  user: two
+  name: Fairfield Construction LLC
+  contact_name: Mike Smith
+  email: mike@example.com
+  phone: 203-555-0102
+  address: 456 Post Road
+  notes: Commercial contractor
