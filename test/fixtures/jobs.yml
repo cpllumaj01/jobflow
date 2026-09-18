@@ -1,0 +1,17 @@
+kitchen_renovation:
+  customer: johnson
+  name: Kitchen Renovation
+  description: Full kitchen renovation
+  address: 123 Main Street
+  status: in_progress
+  start_date: 2026-09-01
+  estimated_completion_date: 2026-11-15
+
+office_buildout:
+  customer: fairfield
+  name: Office Buildout
+  description: Commercial office buildout
+  address: 456 Post Road
+  status: quoted
+  start_date: 2026-10-01
+  estimated_completion_date: 2026-12-15
