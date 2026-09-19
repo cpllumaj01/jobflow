@@ -1,5 +1,7 @@
 Rails.application.routes.draw do
-  resources :jobs
+  resources :jobs do
+    resource :estimate, only: %i[show new create edit update]
+  end
   resource :session
   resources :passwords, param: :token
 

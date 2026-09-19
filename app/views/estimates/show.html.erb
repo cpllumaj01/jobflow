@@ -1,0 +1,52 @@
+<h1>Estimate</h1>
+
+<p>
+  <strong>Job:</strong>
+  <%= link_to @job.name, @job %>
+</p>
+
+<p>
+  <strong>Status:</strong>
+  <%= @estimate.status.humanize %>
+</p>
+
+<p>
+  <strong>Expires:</strong>
+  <%= @estimate.expires_on %>
+</p>
+
+<p>
+  <strong>Notes:</strong>
+  <%= @estimate.notes %>
+</p>
+
+<h2>Line Items</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th>Quantity</th>
+      <th>Unit Price</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @estimate.estimate_line_items.each do |line_item| %>
+      <tr>
+        <td><%= line_item.description %></td>
+        <td><%= line_item.quantity %></td>
+        <td><%= number_to_currency(line_item.unit_price) %></td>
+        <td><%= number_to_currency(line_item.line_total) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<p>
+  <strong>Estimate Total:</strong>
+  <%= number_to_currency(@estimate.total) %>
+</p>
+
+<%= link_to "Edit estimate", edit_job_estimate_path(@job) %>
