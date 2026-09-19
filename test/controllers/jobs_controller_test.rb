@@ -117,4 +117,17 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "new can preselect customer" do
+    get new_job_url(customer_id: customers(:johnson).id)
+
+    assert_response :success
+    assert_select "select[name='job[customer_id]'] option[selected]", text: "Johnson Residence"
+  end
+
+  test "cannot preselect another user's customer" do
+    get new_job_url(customer_id: customers(:fairfield).id)
+
+    assert_response :not_found
+  end
 end

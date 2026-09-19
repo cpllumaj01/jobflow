@@ -86,4 +86,18 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "show displays customer's jobs" do
+    get customer_url(@customer)
+
+    assert_response :success
+    assert_select "body", text: /Kitchen Renovation/
+  end
+
+  test "show does not display another customer's jobs" do
+    get customer_url(@customer)
+
+    assert_select "body", text: /Office Buildout/, count: 0
+  end
+
 end

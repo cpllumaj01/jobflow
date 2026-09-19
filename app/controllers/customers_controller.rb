@@ -6,6 +6,7 @@ class CustomersController < ApplicationController
   end
 
   def show
+    @jobs = @customer.jobs.order(created_at: :desc)
   end
 
   def new

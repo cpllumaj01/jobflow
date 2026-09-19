@@ -11,6 +11,10 @@ class JobsController < ApplicationController
 
   def new
     @job = Job.new
+
+    if params[:customer_id].present?
+      @job.customer = Current.user.customers.find(params[:customer_id])
+    end
   end
 
   def edit

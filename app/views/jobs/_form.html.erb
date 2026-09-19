@@ -13,7 +13,7 @@
 
   <div>
     <%= form.label :customer_id, style: "display: block" %>
-    <%= form.text_field :customer_id %>
+    <%= form.collection_select :customer_id, @customers, :id, :name %>
   </div>
 
   <div>
@@ -33,7 +33,7 @@
 
   <div>
     <%= form.label :status, style: "display: block" %>
-    <%= form.text_field :status %>
+    <%= form.select :status, Job::STATUSES.map { |status| [status.humanize, status] } %>
   </div>
 
   <div>
