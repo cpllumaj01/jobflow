@@ -2,6 +2,21 @@
 
 <%= render @job %>
 
+<section>
+  <h2>Estimate</h2>
+
+  <% if @job.estimate.present? %>
+    <p>
+      <strong>Status:</strong>
+      <%= @job.estimate.status.humanize %>
+    </p>
+
+    <%= link_to "View estimate", job_estimate_path(@job) %>
+  <% else %>
+    <%= link_to "Create estimate", new_job_estimate_path(@job) %>
+  <% end %>
+</section>
+
 <div>
   <%= link_to "Edit this job", edit_job_path(@job) %> |
   <%= link_to "Back to jobs", jobs_path %>

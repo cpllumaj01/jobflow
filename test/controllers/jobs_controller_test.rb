@@ -64,6 +64,31 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "show displays estimate status and view link when job has an estimate" do
+    get job_url(@job)
+
+    assert_response :success
+    assert_select "section" do
+      assert_select "h2", "Estimate"
+      assert_select "p", text: /Status:\s+Approved/
+      assert_select "a[href=?]", job_estimate_path(@job), text: "View estimate"
+      assert_select "a[href=?]", new_job_estimate_path(@job), count: 0
+    end
+  end
+
+  test "show displays create estimate link when job has no estimate" do
+    job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
+
+    get job_url(job)
+
+    assert_response :success
+    assert_select "section" do
+      assert_select "h2", "Estimate"
+      assert_select "a[href=?]", new_job_estimate_path(job), text: "Create estimate"
+      assert_select "a[href=?]", job_estimate_path(job), count: 0
+    end
+  end
+
   test "should get edit" do
     get edit_job_url(@job)
 
