@@ -1,0 +1,17 @@
+cabinets:
+  estimate: kitchen_estimate
+  description: Kitchen cabinets
+  quantity: 1
+  unit_price: 12000.00
+
+countertops:
+  estimate: kitchen_estimate
+  description: Quartz countertops
+  quantity: 50
+  unit_price: 150.00
+
+labor:
+  estimate: kitchen_estimate
+  description: Installation labor
+  quantity: 100
+  unit_price: 75.00

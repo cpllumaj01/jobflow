@@ -1,0 +1,7 @@
+kitchen_estimate:
+  job: kitchen_renovation
+  status: approved
+  notes: Original kitchen renovation estimate
+  expires_on: 2026-10-01
+  approved_at: 2026-08-25 10:00:00
+  

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_18_134424) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_18_142619) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,6 +25,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_134424) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_customers_on_user_id"
+  end
+
+  create_table "estimate_line_items", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "description", null: false
+    t.bigint "estimate_id", null: false
+    t.decimal "quantity", precision: 10, scale: 2, default: "1.0", null: false
+    t.decimal "unit_price", precision: 12, scale: 2, null: false
+    t.datetime "updated_at", null: false
+    t.index ["estimate_id"], name: "index_estimate_line_items_on_estimate_id"
+  end
+
+  create_table "estimates", force: :cascade do |t|
+    t.datetime "approved_at"
+    t.datetime "created_at", null: false
+    t.date "expires_on"
+    t.bigint "job_id", null: false
+    t.text "notes"
+    t.string "status", default: "draft", null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id"], name: "index_estimates_on_job_id", unique: true
   end
 
   create_table "jobs", force: :cascade do |t|
@@ -59,6 +80,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_134424) do
   end
 
   add_foreign_key "customers", "users"
+  add_foreign_key "estimate_line_items", "estimates"
+  add_foreign_key "estimates", "jobs"
   add_foreign_key "jobs", "customers"
   add_foreign_key "sessions", "users"
 end
