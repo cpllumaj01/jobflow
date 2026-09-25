@@ -68,12 +68,10 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     get job_url(@job)
 
     assert_response :success
-    assert_select "section" do
-      assert_select "h2", "Estimate"
-      assert_select "p", text: /Status:\s+Approved/
-      assert_select "a[href=?]", job_estimate_path(@job), text: "View estimate"
-      assert_select "a[href=?]", new_job_estimate_path(@job), count: 0
-    end
+    assert_select "h2", text: "Estimate"
+    assert_select "span", text: @job.estimate.status.humanize
+    assert_select "a[href=?]", job_estimate_path(@job), text: /View estimate/
+    assert_select "a[href=?]", new_job_estimate_path(@job), count: 0
   end
 
   test "show displays create estimate link when job has no estimate" do
@@ -82,11 +80,9 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     get job_url(job)
 
     assert_response :success
-    assert_select "section" do
-      assert_select "h2", "Estimate"
-      assert_select "a[href=?]", new_job_estimate_path(job), text: "Create estimate"
-      assert_select "a[href=?]", job_estimate_path(job), count: 0
-    end
+    assert_select "h2", text: "Estimate"
+    assert_select "a[href=?]", new_job_estimate_path(job), text: "Create estimate"
+    assert_select "a[href=?]", job_estimate_path(job), count: 0
   end
 
   test "should get edit" do

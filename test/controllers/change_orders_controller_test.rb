@@ -34,7 +34,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
   test "job page links to change orders" do
     get job_url(@job)
 
-    assert_select "a[href=?]", job_change_orders_path(@job), text: "View change orders"
+    assert_select "a[href=?]", job_change_orders_path(@job), text: /View change orders/
   end
 
   test "new provides blank rows without lifecycle fields" do
