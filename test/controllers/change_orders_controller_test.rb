@@ -27,8 +27,8 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     get job_change_orders_url(job)
 
     assert_response :success
-    assert_select "p", text: "No change orders yet for this job."
-    assert_select "a[href=?]", new_job_change_order_path(job), text: "New change order"
+    assert_select "h2", text: "No change orders yet"
+    assert_select "a[href=?]", new_job_change_order_path(job), text: "Create a change order"
   end
 
   test "job page links to change orders" do
@@ -82,7 +82,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h1", @change_order.title
     assert_select "td", text: "LED lighting kits"
-    assert_select "p", text: /Change Order Total:\s+\$444.00/
+    assert_select "tfoot", text: /Change order total\s+\$444\.00/
     assert_select "a[href=?]", edit_job_change_order_path(@job, @change_order)
   end
 
@@ -157,7 +157,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :unprocessable_entity
-    assert_select "h1", "New Change Order"
+    assert_select "h1", "New change order"
     assert_select "li", text: /quantity is not a number/
     assert_select "input[name='change_order[title]'][value='Shelving']"
     assert_select "input[name$='[description]'][value='Oak shelves']"
@@ -179,7 +179,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :unprocessable_entity
-    assert_select "h1", "Edit Change Order"
+    assert_select "h1", "Edit change order"
     assert_select "li", text: /quantity is not a number/
     assert_select "input[name='change_order[title]'][value='Unsaved title']"
     assert_select "input[name$='[description]'][value='Dimmer']"

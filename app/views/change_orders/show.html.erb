@@ -1,60 +1,159 @@
-<h1><%= @change_order.title %></h1>
+<% content_for :title, @change_order.title %>
 
-<p><%= notice %></p>
-<p><%= alert %></p>
+<%
+  status_classes = case @change_order.status
+  when "approved"
+    "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+  when "rejected"
+    "bg-red-50 text-red-700 ring-red-600/20"
+  when "pending"
+    "bg-blue-50 text-blue-700 ring-blue-600/20"
+  else
+    "bg-slate-100 text-slate-700 ring-slate-600/20"
+  end
+%>
 
-<p>
-  <strong>Job:</strong>
-  <%= link_to @job.name, @job %>
-</p>
+<div class="mx-auto max-w-5xl">
+  <div class="flex items-start justify-between gap-6">
+    <div>
+      <%= link_to "← Change orders",
+          job_change_orders_path(@job),
+          class: "text-sm font-medium text-slate-500 hover:text-slate-900" %>
 
-<p>
-  <strong>Status:</strong>
-  <%= @change_order.status.humanize %>
-</p>
+      <div class="mt-3 flex items-center gap-3">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-950">
+          <%= @change_order.title %>
+        </h1>
 
-<p>
-  <strong>Description:</strong>
-  <%= @change_order.description %>
-</p>
+        <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset <%= status_classes %>">
+          <%= @change_order.status.humanize %>
+        </span>
+      </div>
 
-<h2>Line Items</h2>
+      <p class="mt-2 text-slate-600">
+        <%= link_to @job.name,
+            job_path(@job),
+            class: "font-medium text-slate-700 hover:text-slate-950" %>
+      </p>
+    </div>
 
-<table>
-  <thead>
-    <tr>
-      <th>Description</th>
-      <th>Quantity</th>
-      <th>Unit Price</th>
-      <th>Total</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    <% @change_order.change_order_line_items.each do |line_item| %>
-      <tr>
-        <td><%= line_item.description %></td>
-        <td><%= line_item.quantity %></td>
-        <td><%= number_to_currency(line_item.unit_price) %></td>
-        <td><%= number_to_currency(line_item.line_total) %></td>
-      </tr>
+    <% unless @change_order.status == "approved" %>
+      <%= link_to "Edit change order",
+          edit_job_change_order_path(@job, @change_order),
+          class: "rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50" %>
     <% end %>
-  </tbody>
-</table>
+  </div>
 
-<p>
-  <strong>Change Order Total:</strong>
-  <%= number_to_currency(@change_order.total) %>
-</p>
+  <% if @change_order.status == "approved" %>
+    <div class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+      This change order is approved and locked from editing. Move it to a non-approved status before making changes.
+    </div>
+  <% end %>
 
-<% if @change_order.status == "approved" %>
-  <p>Approved change orders cannot be edited. Mark the change order as pending or rejected before editing.</p>
-<% else %>
-  <%= link_to "Edit change order", edit_job_change_order_path(@job, @change_order) %>
-<% end %>
+  <div class="mt-8 grid gap-6 lg:grid-cols-3">
+    <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+      <h2 class="text-lg font-semibold text-slate-950">
+        Details
+      </h2>
 
-<%= link_to "Back to change orders", job_change_orders_path(@job) %>
+      <dl class="mt-6 grid gap-6 sm:grid-cols-2">
+        <div>
+          <dt class="text-sm font-medium text-slate-500">Job</dt>
+          <dd class="mt-1 text-sm text-slate-900">
+            <%= @job.name %>
+          </dd>
+        </div>
 
-<%= button_to "Mark as pending", mark_pending_job_change_order_path(@job, @change_order), method: :patch %>
-<%= button_to "Approve change order", approve_job_change_order_path(@job, @change_order), method: :patch %>
-<%= button_to "Reject change order", reject_job_change_order_path(@job, @change_order), method: :patch %>
+        <div>
+          <dt class="text-sm font-medium text-slate-500">Status</dt>
+          <dd class="mt-1 text-sm text-slate-900">
+            <%= @change_order.status.humanize %>
+          </dd>
+        </div>
+
+        <div class="sm:col-span-2">
+          <dt class="text-sm font-medium text-slate-500">Description</dt>
+          <dd class="mt-1 whitespace-pre-line text-sm text-slate-900">
+            <%= @change_order.description.presence || "No description" %>
+          </dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold text-slate-950">
+        Status actions
+      </h2>
+
+      <div class="mt-4 space-y-3">
+        <%= button_to "Mark as pending",
+            mark_pending_job_change_order_path(@job, @change_order),
+            method: :patch,
+            class: "w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+
+        <%= button_to "Approve change order",
+            approve_job_change_order_path(@job, @change_order),
+            method: :patch,
+            class: "w-full cursor-pointer rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500" %>
+
+        <%= button_to "Reject change order",
+            reject_job_change_order_path(@job, @change_order),
+            method: :patch,
+            class: "w-full cursor-pointer rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 px-6 py-5">
+      <h2 class="text-lg font-semibold text-slate-950">
+        Line items
+      </h2>
+    </div>
+
+    <table class="w-full text-left text-sm">
+      <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-6 py-3">Description</th>
+          <th class="px-6 py-3 text-right">Quantity</th>
+          <th class="px-6 py-3 text-right">Unit price</th>
+          <th class="px-6 py-3 text-right">Amount</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-slate-100">
+        <% @change_order.change_order_line_items.each do |line_item| %>
+          <tr>
+            <td class="px-6 py-4 font-medium text-slate-950">
+              <%= line_item.description %>
+            </td>
+
+            <td class="px-6 py-4 text-right text-slate-600">
+              <%= line_item.quantity %>
+            </td>
+
+            <td class="px-6 py-4 text-right text-slate-600">
+              <%= number_to_currency(line_item.unit_price) %>
+            </td>
+
+            <td class="px-6 py-4 text-right font-medium text-slate-950">
+              <%= number_to_currency(line_item.line_total) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+
+      <tfoot class="border-t border-slate-200 bg-slate-50">
+        <tr>
+          <td colspan="3" class="px-6 py-4 text-right text-sm font-semibold text-slate-700">
+            Change order total
+          </td>
+
+          <td class="px-6 py-4 text-right text-lg font-bold text-slate-950">
+            <%= number_to_currency(@change_order.total) %>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

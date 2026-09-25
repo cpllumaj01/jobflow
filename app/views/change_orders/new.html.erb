@@ -1,7 +1,20 @@
-<h1>New Change Order</h1>
+<% content_for :title, "New change order" %>
 
-<p><strong>Job:</strong> <%= link_to @job.name, @job %></p>
+<div class="mx-auto max-w-4xl">
+  <div class="mb-8">
+    <%= link_to "← Change orders",
+        job_change_orders_path(@job),
+        class: "text-sm font-medium text-slate-500 hover:text-slate-900" %>
 
-<%= render "form", change_order: @change_order, job: @job %>
+    <h1 class="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+      New change order
+    </h1>
 
-<%= link_to "Back to change orders", job_change_orders_path(@job) %>
+    <p class="mt-2 text-slate-600">
+      Add revised or additional work for
+      <span class="font-medium text-slate-900"><%= @job.name %></span>.
+    </p>
+  </div>
+
+  <%= render "form", change_order: @change_order, job: @job %>
+</div>
