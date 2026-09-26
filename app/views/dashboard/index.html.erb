@@ -1,3 +1,29 @@
-<h1>JobFlow</h1>
-<p>Dashboard</p>
-<%= button_to "Log out", session_path, method: :delete %>
+<% content_for :title, "Dashboard" %>
+
+<div class="mb-8">
+  <p class="text-sm font-medium text-slate-500">Overview</p>
+  <h1 class="mt-1 text-3xl font-bold tracking-tight text-slate-950">
+    Dashboard
+  </h1>
+  <p class="mt-2 text-slate-600">
+    Manage your customers, jobs, estimates, and change orders.
+  </p>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2">
+  <%= link_to customers_path,
+      class: "rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow" do %>
+    <h2 class="font-semibold text-slate-950">Customers</h2>
+    <p class="mt-1 text-sm text-slate-500">
+      View and manage your customer records.
+    </p>
+  <% end %>
+
+  <%= link_to jobs_path,
+      class: "rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow" do %>
+    <h2 class="font-semibold text-slate-950">Jobs</h2>
+    <p class="mt-1 text-sm text-slate-500">
+      Track active work, estimates, and change orders.
+    </p>
+  <% end %>
+</div>
