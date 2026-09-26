@@ -1,9 +1,14 @@
-<%= form_with model: estimate, url: job_estimate_path(job) do |form| %>
-  <% if estimate.errors.any? %>
-    <div>
-      <h2><%= pluralize(estimate.errors.count, "error") %> prohibited this estimate from being saved:</h2>
+<%= form_with model: estimate,
+    url: job_estimate_path(job),
+    class: "space-y-8" do |form| %>
 
-      <ul>
+  <% if estimate.errors.any? %>
+    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+      <h2 class="text-sm font-semibold text-red-800">
+        <%= pluralize(estimate.errors.count, "error") %> prevented this estimate from being saved.
+      </h2>
+
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-red-700">
         <% estimate.errors.full_messages.each do |message| %>
           <li><%= message %></li>
         <% end %>
@@ -11,36 +16,90 @@
     </div>
   <% end %>
 
-  <div>
-    <%= form.label :expires_on %>
-    <%= form.date_field :expires_on %>
+  <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-950">
+      Estimate details
+    </h2>
+
+    <div class="mt-6 grid gap-6 sm:grid-cols-2">
+      <div>
+        <%= form.label :expires_on,
+            class: "block text-sm font-medium text-slate-700" %>
+
+        <%= form.date_field :expires_on,
+            class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <%= form.label :notes,
+          class: "block text-sm font-medium text-slate-700" %>
+
+      <%= form.textarea :notes,
+          rows: 4,
+          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+    </div>
   </div>
 
-  <div>
-    <%= form.label :notes %>
-    <%= form.textarea :notes %>
-  </div>
+  <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-200 px-6 py-5">
+      <h2 class="text-lg font-semibold text-slate-950">
+        Line items
+      </h2>
 
-  <h2>Line Items</h2>
-  <p>Leave unused rows blank. To add more line items, save the estimate and edit it again.</p>
+      <p class="mt-1 text-sm text-slate-500">
+        Leave unused rows blank. Save and edit the estimate again to add more items.
+      </p>
+    </div>
 
-  <%= form.fields_for :estimate_line_items do |line_item_form| %>
-    <div>
-      <%= line_item_form.label :description %>
-      <%= line_item_form.text_field :description %>
+    <div class="divide-y divide-slate-100">
+      <%= form.fields_for :estimate_line_items do |line_item_form| %>
+        <div class="grid gap-4 px-6 py-5 md:grid-cols-12 md:items-end">
+          <div class="md:col-span-6">
+            <%= line_item_form.label :description,
+                class: "block text-sm font-medium text-slate-700" %>
 
-      <%= line_item_form.label :quantity %>
-      <%= line_item_form.number_field :quantity, step: 0.01 %>
+            <%= line_item_form.text_field :description,
+                class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+          </div>
 
-      <%= line_item_form.label :unit_price %>
-      <%= line_item_form.number_field :unit_price, step: 0.01 %>
+          <div class="md:col-span-2">
+            <%= line_item_form.label :quantity,
+                class: "block text-sm font-medium text-slate-700" %>
 
-      <% if line_item_form.object.persisted? %>
-        <%= line_item_form.label :_destroy, "Remove" %>
-        <%= line_item_form.check_box :_destroy %>
+            <%= line_item_form.number_field :quantity,
+                step: 0.01,
+                class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+          </div>
+
+          <div class="md:col-span-3">
+            <%= line_item_form.label :unit_price, "Unit price",
+                class: "block text-sm font-medium text-slate-700" %>
+
+            <%= line_item_form.number_field :unit_price,
+                step: 0.01,
+                class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+          </div>
+
+          <% if line_item_form.object.persisted? %>
+            <div class="md:col-span-1">
+              <label class="flex items-center gap-2 text-sm text-red-600">
+                <%= line_item_form.check_box :_destroy,
+                    class: "rounded border-slate-300" %>
+                Remove
+              </label>
+            </div>
+          <% end %>
+        </div>
       <% end %>
     </div>
-  <% end %>
+  </div>
 
-  <%= form.submit %>
+  <div class="flex items-center gap-3">
+    <%= form.submit class: "cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700" %>
+
+    <%= link_to "Cancel",
+        estimate.persisted? ? job_estimate_path(job) : job_path(job),
+        class: "text-sm font-medium text-slate-600 hover:text-slate-950" %>
+  </div>
 <% end %>

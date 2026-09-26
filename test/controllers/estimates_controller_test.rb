@@ -295,7 +295,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_response :see_other
     assert_redirected_to job_estimate_url(@job)
     follow_redirect!
-    assert_select "p", text: /Approved estimates cannot be edited/
+    assert_select "body", text: /Approved estimates cannot be edited/
   end
 
   test "approved estimate update cannot change estimate or line items" do
