@@ -1,0 +1,7 @@
+<h1>Edit Change Order</h1>
+
+<p><strong>Job:</strong> <%= link_to @job.name, @job %></p>
+
+<%= render "form", change_order: @change_order, job: @job %>
+
+<%= link_to "View change order", job_change_order_path(@job, @change_order) %>

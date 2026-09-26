@@ -1,0 +1,56 @@
+<h1><%= @change_order.title %></h1>
+
+<p><%= notice %></p>
+<p><%= alert %></p>
+
+<p>
+  <strong>Job:</strong>
+  <%= link_to @job.name, @job %>
+</p>
+
+<p>
+  <strong>Status:</strong>
+  <%= @change_order.status.humanize %>
+</p>
+
+<p>
+  <strong>Description:</strong>
+  <%= @change_order.description %>
+</p>
+
+<h2>Line Items</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th>Quantity</th>
+      <th>Unit Price</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @change_order.change_order_line_items.each do |line_item| %>
+      <tr>
+        <td><%= line_item.description %></td>
+        <td><%= line_item.quantity %></td>
+        <td><%= number_to_currency(line_item.unit_price) %></td>
+        <td><%= number_to_currency(line_item.line_total) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<p>
+  <strong>Change Order Total:</strong>
+  <%= number_to_currency(@change_order.total) %>
+</p>
+
+<% if @change_order.status == "approved" %>
+  <p>Approved change orders cannot be edited.</p>
+<% else %>
+  <%= link_to "Edit change order", edit_job_change_order_path(@job, @change_order) %>
+<% end %>
+
+<%= link_to "Back to change orders", job_change_orders_path(@job) %>

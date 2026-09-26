@@ -1,0 +1,46 @@
+<%= form_with model: [job, change_order] do |form| %>
+  <% if change_order.errors.any? %>
+    <div>
+      <h2><%= pluralize(change_order.errors.count, "error") %> prohibited this change order from being saved:</h2>
+
+      <ul>
+        <% change_order.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= form.label :title %>
+    <%= form.text_field :title %>
+  </div>
+
+  <div>
+    <%= form.label :description %>
+    <%= form.textarea :description %>
+  </div>
+
+  <h2>Line Items</h2>
+  <p>Leave unused rows blank. To add more line items, save the change order and edit it again.</p>
+
+  <%= form.fields_for :change_order_line_items do |line_item_form| %>
+    <div>
+      <%= line_item_form.label :description %>
+      <%= line_item_form.text_field :description %>
+
+      <%= line_item_form.label :quantity %>
+      <%= line_item_form.number_field :quantity, step: 0.01 %>
+
+      <%= line_item_form.label :unit_price %>
+      <%= line_item_form.number_field :unit_price, step: 0.01 %>
+
+      <% if line_item_form.object.persisted? %>
+        <%= line_item_form.label :_destroy, "Remove" %>
+        <%= line_item_form.check_box :_destroy %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= form.submit %>
+<% end %>

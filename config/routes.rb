@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   resources :jobs do
+    resources :change_orders, only: %i[index show new create edit update]
     resource :estimate, only: %i[show new create edit update] do
       patch :mark_sent
       patch :approve

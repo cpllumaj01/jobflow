@@ -1,0 +1,18 @@
+<h1>Change Orders</h1>
+
+<p><strong>Job:</strong> <%= link_to @job.name, @job %></p>
+
+<%= link_to "New change order", new_job_change_order_path(@job) %>
+
+<% if @change_orders.any? %>
+  <ul>
+    <% @change_orders.each do |change_order| %>
+      <li>
+        <%= link_to change_order.title, job_change_order_path(@job, change_order) %>
+        — <%= change_order.status.humanize %>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p>No change orders yet for this job.</p>
+<% end %>
