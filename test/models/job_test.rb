@@ -51,4 +51,109 @@ class JobTest < ActiveSupport::TestCase
     assert ChangeOrder.exists?(change_orders(:office_outlets).id)
     assert ChangeOrderLineItem.exists?(change_order_line_items(:office_outlets).id)
   end
+
+  test "original estimate value is zero without an estimate" do
+    assert_equal 0, jobs(:office_buildout).original_estimate_value
+  end
+
+  test "unapproved estimates contribute zero" do
+    job = jobs(:kitchen_renovation)
+    %w[draft sent rejected].each do |status|
+      job.estimate.update!(status: status)
+      assert_equal 0, job.original_estimate_value
+    end
+  end
+
+  test "approved estimate contributes its calculated total" do
+    job = jobs(:kitchen_renovation)
+
+    assert_equal BigDecimal("27000"), job.original_estimate_value
+  end
+
+  test "approved change order total is zero without change orders" do
+    job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
+
+    assert_equal 0, job.approved_change_order_total
+  end
+
+  test "unapproved change orders contribute zero" do
+    job = jobs(:kitchen_renovation)
+    change_order = change_orders(:kitchen_lighting)
+
+    %w[draft pending rejected].each do |status|
+      change_order.update!(status: status)
+      assert_equal 0, job.approved_change_order_total
+    end
+  end
+
+  test "approved change order contributes its calculated total" do
+    change_orders(:kitchen_lighting).update!(status: "approved")
+
+    assert_equal BigDecimal("444"), jobs(:kitchen_renovation).approved_change_order_total
+  end
+
+  test "multiple approved change orders are summed and other jobs are excluded" do
+    job = jobs(:kitchen_renovation)
+    change_orders(:kitchen_lighting).update!(status: "approved")
+    change_orders(:office_outlets).update!(status: "approved")
+    job.change_orders.create!(
+      title: "Additional shelving", status: "approved",
+      change_order_line_items_attributes: [{ description: "Oak shelves", quantity: "2.5", unit_price: "100.25" }]
+    )
+
+    assert_equal BigDecimal("694.625"), job.approved_change_order_total
+  end
+
+  test "mixed change order statuses include only approved totals" do
+    job = jobs(:kitchen_renovation)
+    change_orders(:kitchen_lighting).update!(status: "approved")
+    %w[draft pending rejected].each do |status|
+      job.change_orders.create!(
+        title: "Additional work #{status}", status: status,
+        change_order_line_items_attributes: [{ description: "Labor", quantity: 2, unit_price: 100 }]
+      )
+    end
+
+    assert_equal BigDecimal("444"), job.approved_change_order_total
+    assert_equal BigDecimal("27444"), job.current_contract_value
+  end
+
+  test "current contract value includes approved estimate without approved change orders" do
+    assert_equal BigDecimal("27000"), jobs(:kitchen_renovation).current_contract_value
+  end
+
+  test "current contract value includes approved change orders without an estimate" do
+    change_orders(:office_outlets).update!(status: "approved")
+
+    assert_equal BigDecimal("500"), jobs(:office_buildout).current_contract_value
+  end
+
+  test "current contract value includes approved change orders with an unapproved estimate" do
+    job = jobs(:kitchen_renovation)
+    change_orders(:kitchen_lighting).update!(status: "approved")
+    job.estimate.update!(status: "sent")
+
+    assert_equal BigDecimal("444"), job.current_contract_value
+  end
+
+  test "current contract value is zero when neither side is approved or present" do
+    assert_equal 0, jobs(:office_buildout).current_contract_value
+    job = jobs(:kitchen_renovation)
+    job.estimate.update!(status: "draft")
+    assert_equal 0, job.current_contract_value
+    empty_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
+    assert_equal 0, empty_job.current_contract_value
+  end
+
+  test "current contract value excludes work after approval is withdrawn" do
+    job = jobs(:kitchen_renovation)
+    change_order = change_orders(:kitchen_lighting)
+    change_order.update!(status: "approved")
+    assert_equal BigDecimal("27444"), job.current_contract_value
+
+    change_order.update!(status: "pending")
+    assert_equal BigDecimal("27000"), job.current_contract_value
+    job.estimate.update!(status: "rejected")
+    assert_equal 0, job.current_contract_value
+  end
 end
