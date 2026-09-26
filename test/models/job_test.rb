@@ -31,4 +31,24 @@ class JobTest < ActiveSupport::TestCase
     assert_not job.valid?
     assert_includes job.errors[:status], "is not included in the list"
   end
+
+  test "allows multiple change orders for a job" do
+    job = jobs(:kitchen_renovation)
+
+    assert_difference("job.change_orders.count", 1) do
+      job.change_orders.create!(title: "Additional shelving")
+    end
+    assert_equal 2, job.change_orders.count
+  end
+
+  test "destroying a job destroys its change orders and their line items" do
+    assert_difference("ChangeOrder.count", -1) do
+      assert_difference("ChangeOrderLineItem.count", -2) do
+        jobs(:kitchen_renovation).destroy!
+      end
+    end
+
+    assert ChangeOrder.exists?(change_orders(:office_outlets).id)
+    assert ChangeOrderLineItem.exists?(change_order_line_items(:office_outlets).id)
+  end
 end

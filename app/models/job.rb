@@ -3,6 +3,7 @@ class Job < ApplicationRecord
 
   belongs_to :customer
   has_one :estimate, dependent: :destroy
+  has_many :change_orders, dependent: :destroy
 
   validates :name, presence: true
   validates :status, inclusion: { in: STATUSES }

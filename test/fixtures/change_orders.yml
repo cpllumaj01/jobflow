@@ -1,0 +1,12 @@
+kitchen_lighting:
+  job: kitchen_renovation
+  title: Add under-cabinet lighting
+  description: Install LED lighting beneath the new kitchen cabinets
+  status: draft
+
+office_outlets:
+  job: office_buildout
+  title: Additional conference room outlets
+  description: Add power outlets along the conference room wall
+  status: pending
+  requested_at: 2026-09-24 10:00:00

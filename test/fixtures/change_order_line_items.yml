@@ -1,0 +1,17 @@
+lighting_materials:
+  change_order: kitchen_lighting
+  description: LED lighting kits
+  quantity: 3
+  unit_price: 85.50
+
+lighting_labor:
+  change_order: kitchen_lighting
+  description: Lighting installation labor
+  quantity: 2.5
+  unit_price: 75.00
+
+office_outlets:
+  change_order: office_outlets
+  description: Install additional outlets
+  quantity: 4
+  unit_price: 125.00

@@ -10,9 +10,31 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_18_142619) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "change_order_line_items", force: :cascade do |t|
+    t.bigint "change_order_id", null: false
+    t.datetime "created_at", null: false
+    t.string "description", null: false
+    t.decimal "quantity", precision: 10, scale: 2, default: "1.0", null: false
+    t.decimal "unit_price", precision: 12, scale: 2, null: false
+    t.datetime "updated_at", null: false
+    t.index ["change_order_id"], name: "index_change_order_line_items_on_change_order_id"
+  end
+
+  create_table "change_orders", force: :cascade do |t|
+    t.datetime "approved_at"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.bigint "job_id", null: false
+    t.datetime "requested_at"
+    t.string "status", default: "draft", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id"], name: "index_change_orders_on_job_id"
+  end
 
   create_table "customers", force: :cascade do |t|
     t.string "address"
@@ -79,6 +101,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_18_142619) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "change_order_line_items", "change_orders"
+  add_foreign_key "change_orders", "jobs"
   add_foreign_key "customers", "users"
   add_foreign_key "estimate_line_items", "estimates"
   add_foreign_key "estimates", "jobs"
