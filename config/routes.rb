@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   resources :jobs do
-    resource :estimate, only: %i[show new create edit update]
+    resource :estimate, only: %i[show new create edit update] do
+      patch :mark_sent
+      patch :approve
+      patch :reject
+    end
   end
   resource :session
   resources :passwords, param: :token

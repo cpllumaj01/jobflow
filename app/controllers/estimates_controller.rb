@@ -1,6 +1,8 @@
 class EstimatesController < ApplicationController
   before_action :set_job
-  before_action :set_estimate, only: %i[show edit update]
+  before_action :set_estimate, only: %i[show edit update mark_sent approve reject]
+
+  before_action :require_editable_estimate, only: %i[edit update]
 
   def show
   end
@@ -44,7 +46,36 @@ class EstimatesController < ApplicationController
     end
   end
 
+  def mark_sent
+    update_status("sent")
+  end
+
+  def approve
+    update_status("approved")
+  end
+
+  def reject
+    update_status("rejected")
+  end
+
   private
+    def require_editable_estimate
+      if @estimate.status == "approved"
+        redirect_to job_estimate_path(@job),
+          alert: "Approved estimates cannot be edited. Mark the estimate as sent or rejected before editing.",
+          status: :see_other
+      end
+    end
+
+    def update_status(status)
+      if @estimate.update(status: status)
+        redirect_to job_estimate_path(@job), notice: "Estimate marked as #{status}.", status: :see_other
+      else
+        flash.now[:alert] = @estimate.errors.full_messages.to_sentence
+        render :show, status: :unprocessable_entity
+      end
+    end
+
     def build_blank_line_items
       3.times { @estimate.estimate_line_items.build(quantity: nil) }
     end

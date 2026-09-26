@@ -5,6 +5,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     @user = users(:one)
     @job = jobs(:kitchen_renovation)
     @estimate = estimates(:kitchen_estimate)
+    @estimate.update!(status: "draft")
 
     sign_in_as @user
   end
@@ -200,5 +201,155 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :not_found
+  end
+
+  test "lifecycle actions support each current status and keep timestamps consistent" do
+    { mark_sent: "sent", approve: "approved", reject: "rejected" }.each do |action, target_status|
+      Estimate::STATUSES.each do |initial_status|
+        @estimate.update!(status: initial_status)
+        previous_approval = @estimate.approved_at
+
+        freeze_time do
+          patch public_send("#{action}_job_estimate_url", @job)
+
+          assert_response :see_other
+          assert_redirected_to job_estimate_url(@job)
+          assert_equal target_status, @estimate.reload.status
+          if target_status == "approved"
+            assert_equal previous_approval || Time.current, @estimate.approved_at
+          else
+            assert_nil @estimate.approved_at
+          end
+        end
+      end
+    end
+  end
+
+  test "lifecycle actions cannot access another user's estimate" do
+    other_job = jobs(:office_buildout)
+    other_estimate = other_job.create_estimate!
+
+    %i[mark_sent approve reject].each do |action|
+      patch public_send("#{action}_job_estimate_url", other_job)
+
+      assert_response :not_found
+      assert_equal "draft", other_estimate.reload.status
+      assert_nil other_estimate.approved_at
+    end
+  end
+
+  test "lifecycle actions return not found for a job without an estimate" do
+    job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
+
+    %i[mark_sent approve reject].each do |action|
+      patch public_send("#{action}_job_estimate_url", job)
+      assert_response :not_found
+    end
+    assert_nil job.reload.estimate
+  end
+
+  test "generic create cannot set lifecycle fields" do
+    job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
+    post job_estimate_url(job), params: {
+      estimate: { notes: "New estimate", status: "approved", approved_at: Time.current }
+    }
+
+    assert_redirected_to job_estimate_url(job)
+    assert_equal "draft", job.reload.estimate.status
+    assert_nil job.estimate.approved_at
+  end
+
+  test "generic update cannot change lifecycle fields" do
+    patch job_estimate_url(@job), params: {
+      estimate: { notes: "Updated notes", status: "approved", approved_at: "2000-01-01" }
+    }
+
+    assert_redirected_to job_estimate_url(@job)
+    assert_equal "draft", @estimate.reload.status
+    assert_nil @estimate.approved_at
+    assert_equal "Updated notes", @estimate.notes
+  end
+
+  test "show provides lifecycle buttons while edit excludes lifecycle fields" do
+    get job_estimate_url(@job)
+    %i[mark_sent approve reject].each do |action|
+      assert_select "form[action=?]", public_send("#{action}_job_estimate_path", @job) do
+        assert_select "input[name='_method'][value='patch']"
+        assert_select "button", count: 1
+      end
+    end
+
+    get edit_job_estimate_url(@job)
+    assert_select "[name='estimate[status]']", count: 0
+    assert_select "[name='estimate[approved_at]']", count: 0
+  end
+
+  test "approved estimate hides edit link and blocks direct edit access" do
+    @estimate.update!(status: "approved")
+
+    get job_estimate_url(@job)
+    assert_response :success
+    assert_select "a[href=?]", edit_job_estimate_path(@job), count: 0
+
+    get edit_job_estimate_url(@job)
+    assert_response :see_other
+    assert_redirected_to job_estimate_url(@job)
+    follow_redirect!
+    assert_select "p", text: /Approved estimates cannot be edited/
+  end
+
+  test "approved estimate update cannot change estimate or line items" do
+    @estimate.update!(status: "approved")
+    original_attributes = @estimate.attributes
+    original_items = @estimate.estimate_line_items.order(:id).map(&:attributes)
+    original_total = @estimate.total
+
+    assert_no_difference("EstimateLineItem.count") do
+      patch job_estimate_url(@job), params: {
+        estimate: {
+          notes: "Changed", status: "draft", approved_at: "",
+          estimate_line_items_attributes: {
+            "0" => { id: estimate_line_items(:cabinets).id, quantity: 99, unit_price: 1 },
+            "1" => { id: estimate_line_items(:labor).id, _destroy: "1" },
+            "2" => { description: "Extra work", quantity: 1, unit_price: 500 }
+          }
+        }
+      }
+    end
+
+    assert_response :see_other
+    assert_redirected_to job_estimate_url(@job)
+    assert_equal original_attributes, @estimate.reload.attributes
+    assert_equal original_items, @estimate.estimate_line_items.order(:id).map(&:attributes)
+    assert_equal original_total, @estimate.total
+  end
+
+  test "every non-approved status allows editing and updating" do
+    %w[draft sent rejected].each do |status|
+      @estimate.update!(status: status)
+
+      get job_estimate_url(@job)
+      assert_select "a[href=?]", edit_job_estimate_path(@job), text: "Edit estimate"
+      get edit_job_estimate_url(@job)
+      assert_response :success
+
+      patch job_estimate_url(@job), params: { estimate: { notes: "Edited while #{status}" } }
+      assert_redirected_to job_estimate_url(@job)
+      assert_equal "Edited while #{status}", @estimate.reload.notes
+    end
+  end
+
+  test "moving approved estimate to sent allows editing again" do
+    @estimate.update!(status: "approved")
+
+    patch mark_sent_job_estimate_url(@job)
+    assert_redirected_to job_estimate_url(@job)
+    assert_nil @estimate.reload.approved_at
+
+    get edit_job_estimate_url(@job)
+    assert_response :success
+    patch job_estimate_url(@job), params: { estimate: { notes: "Revised estimate" } }
+    assert_redirected_to job_estimate_url(@job)
+    assert_equal "Revised estimate", @estimate.reload.notes
   end
 end

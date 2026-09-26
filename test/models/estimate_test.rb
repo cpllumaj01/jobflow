@@ -49,4 +49,39 @@ class EstimateTest < ActiveSupport::TestCase
 
     assert_not estimate.valid?
   end
+
+  test "approval sets its timestamp and ordinary saves preserve it" do
+    estimate = estimates(:kitchen_estimate)
+    estimate.update!(status: "sent")
+
+    freeze_time do
+      estimate.update!(status: "approved")
+      assert_equal Time.current, estimate.reload.approved_at
+    end
+
+    approved_at = estimate.approved_at
+    travel 1.hour do
+      estimate.update!(status: "approved", notes: "Updated notes")
+      assert_equal approved_at, estimate.reload.approved_at
+    end
+  end
+
+  test "every non-approved status clears the approval timestamp" do
+    estimate = estimates(:kitchen_estimate)
+
+    %w[draft sent rejected].each do |status|
+      estimate.update!(status: status, approved_at: Time.current)
+      assert_nil estimate.reload.approved_at
+    end
+  end
+
+  test "reapproval records a new approval time" do
+    estimate = estimates(:kitchen_estimate)
+    estimate.update!(status: "rejected")
+
+    freeze_time do
+      estimate.update!(status: "approved")
+      assert_equal Time.current, estimate.reload.approved_at
+    end
+  end
 end

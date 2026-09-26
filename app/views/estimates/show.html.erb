@@ -1,5 +1,8 @@
 <h1>Estimate</h1>
 
+<p><%= notice %></p>
+<p><%= alert %></p>
+
 <p>
   <strong>Job:</strong>
   <%= link_to @job.name, @job %>
@@ -49,4 +52,12 @@
   <%= number_to_currency(@estimate.total) %>
 </p>
 
-<%= link_to "Edit estimate", edit_job_estimate_path(@job) %>
+<% if @estimate.status == "approved" %>
+  <p>Approved estimates cannot be edited. Mark the estimate as sent or rejected before editing.</p>
+<% else %>
+  <%= link_to "Edit estimate", edit_job_estimate_path(@job) %>
+<% end %>
+
+<%= button_to "Mark as sent", mark_sent_job_estimate_path(@job), method: :patch %>
+<%= button_to "Approve estimate", approve_job_estimate_path(@job), method: :patch %>
+<%= button_to "Reject estimate", reject_job_estimate_path(@job), method: :patch %>
