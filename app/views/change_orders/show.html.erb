@@ -48,9 +48,13 @@
 </p>
 
 <% if @change_order.status == "approved" %>
-  <p>Approved change orders cannot be edited.</p>
+  <p>Approved change orders cannot be edited. Mark the change order as pending or rejected before editing.</p>
 <% else %>
   <%= link_to "Edit change order", edit_job_change_order_path(@job, @change_order) %>
 <% end %>
 
 <%= link_to "Back to change orders", job_change_orders_path(@job) %>
+
+<%= button_to "Mark as pending", mark_pending_job_change_order_path(@job, @change_order), method: :patch %>
+<%= button_to "Approve change order", approve_job_change_order_path(@job, @change_order), method: :patch %>
+<%= button_to "Reject change order", reject_job_change_order_path(@job, @change_order), method: :patch %>

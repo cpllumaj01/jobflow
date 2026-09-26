@@ -191,6 +191,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     @change_order.update!(status: "approved", approved_at: Time.current)
     original_attributes = @change_order.attributes
     original_items = @change_order.change_order_line_items.order(:id).map(&:attributes)
+    original_total = @change_order.total
 
     get job_change_order_url(@job, @change_order)
     assert_select "a[href=?]", edit_job_change_order_path(@job, @change_order), count: 0
@@ -208,6 +209,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to job_change_order_url(@job, @change_order)
     assert_equal original_attributes, @change_order.reload.attributes
     assert_equal original_items, @change_order.change_order_line_items.order(:id).map(&:attributes)
+    assert_equal original_total, @change_order.total
   end
 
   test "another user's job is inaccessible for all actions" do
@@ -279,5 +281,97 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     sign_out
     get job_change_orders_url(@job)
     assert_redirected_to new_session_url
+  end
+
+  test "lifecycle actions support each current status and consistent approval timestamps" do
+    { mark_pending: "pending", approve: "approved", reject: "rejected" }.each do |action, target_status|
+      ChangeOrder::STATUSES.each do |initial_status|
+        @change_order.update!(status: initial_status)
+        previous_approval = @change_order.approved_at
+
+        freeze_time do
+          patch public_send("#{action}_job_change_order_url", @job, @change_order)
+
+          assert_response :see_other
+          assert_redirected_to job_change_order_url(@job, @change_order)
+          assert_equal target_status, @change_order.reload.status
+          if target_status == "approved"
+            assert_equal previous_approval || Time.current, @change_order.approved_at
+          else
+            assert_nil @change_order.approved_at
+          end
+        end
+      end
+    end
+  end
+
+  test "repeated approval requests preserve the original timestamp" do
+    patch approve_job_change_order_url(@job, @change_order)
+    approved_at = @change_order.reload.approved_at
+    assert_not_nil approved_at
+
+    travel 1.hour do
+      patch approve_job_change_order_url(@job, @change_order)
+      assert_redirected_to job_change_order_url(@job, @change_order)
+      assert_equal approved_at, @change_order.reload.approved_at
+    end
+  end
+
+  test "pending and rejection actions allow editing an approved change order again" do
+    %i[mark_pending reject].each do |action|
+      @change_order.update!(status: "approved")
+      patch public_send("#{action}_job_change_order_url", @job, @change_order)
+      assert_redirected_to job_change_order_url(@job, @change_order)
+      assert_nil @change_order.reload.approved_at
+
+      get edit_job_change_order_url(@job, @change_order)
+      assert_response :success
+      patch job_change_order_url(@job, @change_order), params: { change_order: { title: "Revised after #{action}" } }
+      assert_redirected_to job_change_order_url(@job, @change_order)
+      assert_equal "Revised after #{action}", @change_order.reload.title
+    end
+  end
+
+  test "lifecycle actions enforce both job ownership and change order membership" do
+    other_job = jobs(:office_buildout)
+    other_order = change_orders(:office_outlets)
+    own_other_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
+    own_other_order = own_other_job.change_orders.create!(title: "Tile upgrade")
+
+    [[other_job, other_order], [@job, other_order], [@job, own_other_order]].each do |job, change_order|
+      original_attributes = change_order.attributes
+      %i[mark_pending approve reject].each do |action|
+        patch public_send("#{action}_job_change_order_url", job, change_order)
+        assert_response :not_found
+        assert_equal original_attributes, change_order.reload.attributes
+      end
+    end
+  end
+
+  test "show provides lifecycle buttons and edit excludes lifecycle fields" do
+    get job_change_order_url(@job, @change_order)
+    assert_response :success
+    %i[mark_pending approve reject].each do |action|
+      assert_select "form[action=?]", public_send("#{action}_job_change_order_path", @job, @change_order) do
+        assert_select "input[name='_method'][value='patch']"
+        assert_select "button", count: 1
+      end
+    end
+
+    get edit_job_change_order_url(@job, @change_order)
+    assert_response :success
+    %w[status approved_at requested_at].each do |field|
+      assert_select "[name=?]", "change_order[#{field}]", count: 0
+    end
+  end
+
+  test "lifecycle actions require authentication" do
+    sign_out
+    %i[mark_pending approve reject].each do |action|
+      patch public_send("#{action}_job_change_order_url", @job, @change_order)
+      assert_redirected_to new_session_url
+      assert_equal "draft", @change_order.reload.status
+      assert_nil @change_order.approved_at
+    end
   end
 end

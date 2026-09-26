@@ -92,4 +92,45 @@ class ChangeOrderTest < ActiveSupport::TestCase
     assert_difference("ChangeOrderLineItem.count", -2) { change_order.destroy! }
     assert ChangeOrderLineItem.exists?(change_order_line_items(:office_outlets).id)
   end
+
+  test "approval sets its timestamp and repeated approval preserves it" do
+    change_order = change_orders(:kitchen_lighting)
+
+    freeze_time do
+      change_order.update!(status: "approved")
+      assert_equal Time.current, change_order.reload.approved_at
+    end
+
+    approved_at = change_order.approved_at
+    travel 1.hour do
+      change_order.update!(status: "approved")
+      assert_equal approved_at, change_order.reload.approved_at
+    end
+  end
+
+  test "every non-approved status clears stale approval timestamps" do
+    change_order = change_orders(:kitchen_lighting)
+
+    %w[draft pending rejected].each do |status|
+      change_order.update!(status: "approved")
+      change_order.update!(status: status)
+      assert_nil change_order.reload.approved_at
+
+      change_order.update!(approved_at: Time.current)
+      assert_nil change_order.reload.approved_at
+    end
+  end
+
+  test "reapproval records a new approval time" do
+    change_order = change_orders(:kitchen_lighting)
+    change_order.update!(status: "approved")
+    previous_approval = change_order.approved_at
+    change_order.update!(status: "rejected")
+
+    travel 1.hour do
+      change_order.update!(status: "approved")
+      assert_equal Time.current, change_order.reload.approved_at
+      assert_operator change_order.approved_at, :>, previous_approval
+    end
+  end
 end

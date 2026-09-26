@@ -1,6 +1,6 @@
 class ChangeOrdersController < ApplicationController
   before_action :set_job
-  before_action :set_change_order, only: %i[show edit update]
+  before_action :set_change_order, only: %i[show edit update mark_pending approve reject]
   before_action :require_editable_change_order, only: %i[edit update]
 
   def index
@@ -39,7 +39,28 @@ class ChangeOrdersController < ApplicationController
     end
   end
 
+  def mark_pending
+    update_status("pending")
+  end
+
+  def approve
+    update_status("approved")
+  end
+
+  def reject
+    update_status("rejected")
+  end
+
   private
+    def update_status(status)
+      if @change_order.update(status: status)
+        redirect_to job_change_order_path(@job, @change_order), notice: "Change order marked as #{status}.", status: :see_other
+      else
+        flash.now[:alert] = @change_order.errors.full_messages.to_sentence
+        render :show, status: :unprocessable_entity
+      end
+    end
+
     def set_job
       @job = Current.user.jobs.find(params[:job_id])
     end
@@ -51,7 +72,7 @@ class ChangeOrdersController < ApplicationController
     def require_editable_change_order
       if @change_order.status == "approved"
         redirect_to job_change_order_path(@job, @change_order),
-          alert: "Approved change orders cannot be edited.", status: :see_other
+          alert: "Approved change orders cannot be edited. Mark the change order as pending or rejected before editing.", status: :see_other
       end
     end
 

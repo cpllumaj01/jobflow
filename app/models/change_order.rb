@@ -9,7 +9,18 @@ class ChangeOrder < ApplicationRecord
   validates :title, presence: true
   validates :status, inclusion: { in: STATUSES }
 
+  before_save :sync_approved_at
+
   def total
     change_order_line_items.sum(&:line_total)
   end
+
+  private
+    def sync_approved_at
+      if status == "approved"
+        self.approved_at = Time.current if will_save_change_to_status? || approved_at.nil?
+      else
+        self.approved_at = nil
+      end
+    end
 end
