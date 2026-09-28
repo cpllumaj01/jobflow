@@ -84,20 +84,26 @@
       </h2>
 
       <div class="mt-4 space-y-3">
-        <%= button_to "Mark as sent",
-            mark_sent_job_estimate_path(@job),
-            method: :patch,
-            class: "w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+        <% if @estimate.status != "sent" %>
+          <%= button_to "Mark as sent",
+              mark_sent_job_estimate_path(@job),
+              method: :patch,
+              class: "w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" %>
+        <% end %>
 
-        <%= button_to "Approve estimate",
-            approve_job_estimate_path(@job),
-            method: :patch,
-            class: "w-full cursor-pointer rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500" %>
+        <% if @estimate.status == "sent" %>
+          <%= button_to "Approve estimate",
+              approve_job_estimate_path(@job),
+              method: :patch,
+              class: "w-full cursor-pointer rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500" %>
+        <% end %>
 
-        <%= button_to "Reject estimate",
-            reject_job_estimate_path(@job),
-            method: :patch,
-            class: "w-full cursor-pointer rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50" %>
+        <% if %w[sent approved].include?(@estimate.status) %>
+          <%= button_to "Reject estimate",
+              reject_job_estimate_path(@job),
+              method: :patch,
+              class: "w-full cursor-pointer rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50" %>
+        <% end %>
       </div>
     </div>
   </div>

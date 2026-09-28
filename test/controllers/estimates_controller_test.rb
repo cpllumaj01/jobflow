@@ -225,6 +225,38 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "repeated approval preserves the original timestamp after time passes" do
+    @estimate.update!(status: "sent")
+    patch approve_job_estimate_url(@job)
+    original_approval = @estimate.reload.approved_at
+    assert_not_nil original_approval
+
+    travel 1.hour do
+      patch approve_job_estimate_url(@job)
+
+      assert_redirected_to job_estimate_url(@job)
+      assert_equal "approved", @estimate.reload.status
+      assert_equal original_approval, @estimate.approved_at
+    end
+  end
+
+  test "lifecycle actions ignore submitted estimate and ownership IDs" do
+    other_job = jobs(:office_buildout)
+    other_estimate = other_job.create_estimate!
+    original_attributes = other_estimate.attributes
+
+    %i[mark_sent approve reject].each do |action|
+      patch public_send("#{action}_job_estimate_url", @job), params: {
+        id: other_estimate.id,
+        estimate: { id: other_estimate.id, job_id: other_job.id, approved_at: "2000-01-01" }
+      }
+
+      assert_redirected_to job_estimate_url(@job)
+      assert_equal original_attributes, other_estimate.reload.attributes
+      assert_equal @job.id, @estimate.reload.job_id
+    end
+  end
+
   test "lifecycle actions cannot access another user's estimate" do
     other_job = jobs(:office_buildout)
     other_estimate = other_job.create_estimate!
@@ -270,15 +302,32 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Updated notes", @estimate.notes
   end
 
-  test "show provides lifecycle buttons while edit excludes lifecycle fields" do
-    get job_estimate_url(@job)
-    %i[mark_sent approve reject].each do |action|
-      assert_select "form[action=?]", public_send("#{action}_job_estimate_path", @job) do
-        assert_select "input[name='_method'][value='patch']"
-        assert_select "button", count: 1
+  test "show provides lifecycle buttons appropriate to the current status" do
+    {
+      "draft" => %i[mark_sent],
+      "sent" => %i[approve reject],
+      "approved" => %i[mark_sent reject],
+      "rejected" => %i[mark_sent]
+    }.each do |status, actions|
+      @estimate.update!(status: status)
+      get job_estimate_url(@job)
+
+      assert_response :success
+      %i[mark_sent approve reject].each do |action|
+        path = public_send("#{action}_job_estimate_path", @job)
+        if actions.include?(action)
+          assert_select "form[action=?]", path, count: 1 do
+            assert_select "input[name='_method'][value='patch']"
+            assert_select "button", count: 1
+          end
+        else
+          assert_select "form[action=?]", path, count: 0
+        end
       end
     end
+  end
 
+  test "edit excludes lifecycle fields" do
     get edit_job_estimate_url(@job)
     assert_select "[name='estimate[status]']", count: 0
     assert_select "[name='estimate[approved_at]']", count: 0
@@ -290,6 +339,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     get job_estimate_url(@job)
     assert_response :success
     assert_select "a[href=?]", edit_job_estimate_path(@job), count: 0
+    assert_select "body", text: /This estimate is approved and locked from editing/
 
     get edit_job_estimate_url(@job)
     assert_response :see_other
