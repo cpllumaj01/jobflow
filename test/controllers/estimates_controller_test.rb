@@ -352,4 +352,48 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to job_estimate_url(@job)
     assert_equal "Revised estimate", @estimate.reload.notes
   end
+
+  test "show displays all line items with currency prices and totals" do
+    get job_estimate_url(@job)
+
+    assert_response :success
+    assert_select "tbody tr", count: 3
+    {
+      "Kitchen cabinets" => ["1.0", "$12,000.00", "$12,000.00"],
+      "Quartz countertops" => ["50.0", "$150.00", "$7,500.00"],
+      "Installation labor" => ["100.0", "$75.00", "$7,500.00"]
+    }.each do |description, values|
+      assert_select "tbody tr" do |rows|
+        row = rows.find { |element| element.at_css("td").text.strip == description }
+        assert_not_nil row
+        assert_equal [description, *values], row.css("td").map { |cell| cell.text.strip }
+      end
+    end
+    assert_select "th", "Line total"
+    assert_select "tfoot td", text: "$27,000.00"
+    assert_select "a[href=?]", edit_job_estimate_path(@job), text: "Edit estimate"
+  end
+
+  test "show displays status expiration and notes" do
+    get job_estimate_url(@job)
+
+    assert_response :success
+    assert_select "dd", "Draft"
+    assert_select "dd", @estimate.expires_on.to_fs(:long)
+    assert_select "dd", @estimate.notes
+  end
+
+  test "show handles missing optional details and no line items" do
+    @estimate.update!(expires_on: nil, notes: nil)
+    @estimate.estimate_line_items.destroy_all
+
+    get job_estimate_url(@job)
+
+    assert_response :success
+    assert_select "dd", "No expiration date"
+    assert_select "dd", "No notes"
+    assert_select "tbody td[colspan='4']", "No line items yet."
+    assert_select "tfoot td", text: "$0.00"
+    assert_select "a[href=?]", edit_job_estimate_path(@job), text: "Edit estimate"
+  end
 end

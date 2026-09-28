@@ -115,11 +115,18 @@
           <th class="px-6 py-3">Description</th>
           <th class="px-6 py-3 text-right">Quantity</th>
           <th class="px-6 py-3 text-right">Unit price</th>
-          <th class="px-6 py-3 text-right">Amount</th>
+          <th class="px-6 py-3 text-right">Line total</th>
         </tr>
       </thead>
 
       <tbody class="divide-y divide-slate-100">
+        <% if @estimate.estimate_line_items.empty? %>
+          <tr>
+            <td colspan="4" class="px-6 py-8 text-center text-slate-500">
+              No line items yet.
+            </td>
+          </tr>
+        <% end %>
         <% @estimate.estimate_line_items.each do |line_item| %>
           <tr>
             <td class="px-6 py-4 font-medium text-slate-950">

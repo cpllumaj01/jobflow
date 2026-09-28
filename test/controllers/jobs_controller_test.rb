@@ -64,12 +64,15 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "show displays estimate status and view link when job has an estimate" do
+  test "show displays estimate status total and view link when job has an estimate" do
     get job_url(@job)
 
     assert_response :success
     assert_select "h2", text: "Estimate"
     assert_select "span", text: @job.estimate.status.humanize
+    assert_select "p", text: "Estimate total" do |labels|
+      assert_equal "$27,000.00", labels.first.next_element.text.strip
+    end
     assert_select "a[href=?]", job_estimate_path(@job), text: /View estimate/
     assert_select "a[href=?]", new_job_estimate_path(@job), count: 0
   end
@@ -283,5 +286,18 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
       assert_select "tbody a", count: 1
       assert_select "a[href=?]", job_path(@job)
     end
+  end
+
+  test "job summary displays unapproved estimate total separately from contract value" do
+    @job.estimate.update!(status: "draft")
+
+    get job_url(@job)
+
+    assert_response :success
+    assert_select "span", text: "Draft"
+    assert_select "p", text: "Estimate total" do |labels|
+      assert_equal "$27,000.00", labels.first.next_element.text.strip
+    end
+    assert_select "a[href=?]", job_estimate_path(@job), text: /View estimate/
   end
 end
