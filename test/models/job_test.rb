@@ -156,4 +156,22 @@ class JobTest < ActiveSupport::TestCase
     job.estimate.update!(status: "rejected")
     assert_equal 0, job.current_contract_value
   end
+
+  test "preloaded contract values match unloaded values without additional queries" do
+    job = jobs(:kitchen_renovation)
+    change_orders(:kitchen_lighting).update!(status: "approved")
+    %w[draft pending rejected].each do |status|
+      job.change_orders.create!(
+        title: "Additional work #{status}", status: status,
+        change_order_line_items_attributes: [{ description: "Labor", quantity: 2, unit_price: 100 }]
+      )
+    end
+    expected_value = job.current_contract_value
+    preloaded_job = Job.includes(estimate: :estimate_line_items, change_orders: :change_order_line_items).find(job.id)
+
+    assert_no_queries do
+      assert_equal BigDecimal("444"), preloaded_job.approved_change_order_total
+      assert_equal expected_value, preloaded_job.current_contract_value
+    end
+  end
 end

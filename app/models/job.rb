@@ -13,7 +13,11 @@ class Job < ApplicationRecord
   end
 
   def approved_change_order_total
-    change_orders.where(status: "approved").includes(:change_order_line_items).sum(&:total)
+    if change_orders.loaded?
+      change_orders.select { |change_order| change_order.status == "approved" }.sum(&:total)
+    else
+      change_orders.where(status: "approved").includes(:change_order_line_items).sum(&:total)
+    end
   end
 
   def current_contract_value

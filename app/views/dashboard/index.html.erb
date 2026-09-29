@@ -10,6 +10,33 @@
   </p>
 </div>
 
+<dl class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <div id="total_customers" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <dt class="text-sm font-medium text-slate-500">Total customers</dt>
+    <dd class="mt-2 text-2xl font-bold tracking-tight text-slate-950"><%= @total_customers %></dd>
+  </div>
+  <div id="total_jobs" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <dt class="text-sm font-medium text-slate-500">Total jobs</dt>
+    <dd class="mt-2 text-2xl font-bold tracking-tight text-slate-950"><%= @total_jobs %></dd>
+  </div>
+  <div id="active_jobs" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <dt class="text-sm font-medium text-slate-500">Active jobs</dt>
+    <dd class="mt-2 text-2xl font-bold tracking-tight text-slate-950"><%= @active_jobs %></dd>
+  </div>
+  <div id="pending_estimates" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <dt class="text-sm font-medium text-slate-500">Pending estimates</dt>
+    <dd class="mt-2 text-2xl font-bold tracking-tight text-slate-950"><%= @pending_estimates %></dd>
+  </div>
+  <div id="pending_change_orders" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <dt class="text-sm font-medium text-slate-500">Pending change orders</dt>
+    <dd class="mt-2 text-2xl font-bold tracking-tight text-slate-950"><%= @pending_change_orders %></dd>
+  </div>
+  <div id="total_current_contract_value" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <dt class="text-sm font-medium text-slate-500">Total current contract value</dt>
+    <dd class="mt-2 text-2xl font-bold tracking-tight text-slate-950"><%= number_to_currency(@total_current_contract_value) %></dd>
+  </div>
+</dl>
+
 <div class="grid gap-4 sm:grid-cols-2">
   <%= link_to customers_path,
       class: "rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow" do %>
