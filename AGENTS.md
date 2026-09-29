@@ -82,6 +82,19 @@ Otherwise: inspect, implement, verify, self-review, and report.
 - Do not broadly redesign unrelated screens during a focused ticket.
 - Do not extract helpers, partials, builders, or components solely to eliminate minor repetition.
 
+### Stimulus
+
+When Stimulus is appropriate or explicitly requested:
+
+- Prefer declarative `data-action` bindings over manually attaching DOM event listeners.
+- Use Stimulus targets for DOM elements the controller needs to reference.
+- Use Stimulus values for configurable controller settings such as debounce delays instead of unexplained magic numbers.
+- Use `connect()` only when initialization work is actually required.
+- Use `disconnect()` to clean up timers, observers, subscriptions, global listeners, or other side effects created by the controller.
+- Keep controllers small and focused on UI behavior; business logic belongs in Rails models or controllers where appropriate.
+- Prefer native browser APIs such as `requestSubmit()` rather than manually reproducing browser behavior.
+- Do not add JavaScript for behavior that is already handled cleanly by server-rendered Rails.
+
 ## Security and Ownership
 
 - Keep user-owned data scoped through the authenticated user using existing ownership patterns.
