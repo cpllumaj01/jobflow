@@ -3,7 +3,21 @@ class JobsController < ApplicationController
   before_action :set_customers, only: %i[new edit create update]
 
   def index
+    @query = params[:q].to_s.strip
+    @status = params[:status].to_s
     @jobs = Current.user.jobs.includes(:customer).order(created_at: :desc)
+
+    if @query.present?
+      pattern = "%#{Job.sanitize_sql_like(@query)}%"
+      @jobs = @jobs.joins(:customer).where(
+        "jobs.name ILIKE :query OR jobs.address ILIKE :query OR customers.name ILIKE :query",
+        query: pattern
+      )
+    end
+
+    if @status.present?
+      @jobs = Job::STATUSES.include?(@status) ? @jobs.where(status: @status) : @jobs.none
+    end
   end
 
   def show

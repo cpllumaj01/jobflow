@@ -16,62 +16,92 @@
       class: "rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700" %>
 </div>
 
-<div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-  <% if @jobs.any? %>
-    <table class="w-full text-left text-sm">
-      <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        <tr>
-          <th class="px-6 py-3">Job</th>
-          <th class="px-6 py-3">Customer</th>
-          <th class="px-6 py-3">Status</th>
-          <th class="px-6 py-3 text-right"></th>
-        </tr>
-      </thead>
+<%= form_with url: jobs_path, method: :get,
+    data: { controller: "job-filters", action: "submit->job-filters#cancel", turbo_frame: "jobs_results", turbo_action: "replace" },
+    class: "mt-8 flex flex-wrap items-end gap-4" do |form| %>
+  <div class="min-w-64 flex-1">
+    <%= form.label :q, "Search jobs", class: "block text-sm font-medium text-slate-700" %>
+    <%= form.search_field :q, value: @query, placeholder: "Job name, address, or customer",
+        data: { action: "input->job-filters#search" },
+        class: "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900" %>
+  </div>
 
-      <tbody class="divide-y divide-slate-100">
-        <% @jobs.each do |job| %>
-          <tr class="hover:bg-slate-50">
-            <td class="px-6 py-4">
-              <div class="font-medium text-slate-950">
-                <%= job.name %>
-              </div>
+  <div>
+    <%= form.label :status, "Status", class: "block text-sm font-medium text-slate-700" %>
+    <% status_options = Job::STATUSES.map { |status| [status.humanize, status] } %>
+    <% status_options << ["Unknown status: #{@status}", @status] if @status.present? && !Job::STATUSES.include?(@status) %>
+    <%= form.select :status, status_options, { include_blank: "All statuses", selected: @status },
+        data: { action: "change->job-filters#submit" },
+        class: "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900" %>
+  </div>
 
-              <% if job.address.present? %>
-                <div class="mt-1 text-sm text-slate-500">
-                  <%= job.address %>
-                </div>
-              <% end %>
-            </td>
+  <%= form.submit "Filter jobs", class: "rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" %>
+  <%= link_to "Reset filters", jobs_path, data: { action: "click->job-filters#cancel" }, class: "px-2 py-2 text-sm font-medium text-slate-600 hover:text-slate-950" %>
+<% end %>
 
-            <td class="px-6 py-4 text-slate-600">
-              <%= job.customer.name %>
-            </td>
-
-            <td class="px-6 py-4">
-              <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                <%= job.status.humanize %>
-              </span>
-            </td>
-
-            <td class="px-6 py-4 text-right">
-              <%= link_to "View",
-                  job_path(job),
-                  class: "font-medium text-slate-700 hover:text-slate-950" %>
-            </td>
+<%= turbo_frame_tag "jobs_results", target: "_top", data: { turbo_action: "replace" } do %>
+  <div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <% if @jobs.any? %>
+      <table class="w-full text-left text-sm">
+        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-6 py-3">Job</th>
+            <th class="px-6 py-3">Customer</th>
+            <th class="px-6 py-3">Status</th>
+            <th class="px-6 py-3 text-right"></th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
-  <% else %>
-    <div class="px-6 py-12 text-center">
-      <h2 class="font-semibold text-slate-950">No jobs yet</h2>
-      <p class="mt-1 text-sm text-slate-500">
-        Create your first job to start tracking work.
-      </p>
+        </thead>
 
-      <%= link_to "Create a job",
-          new_job_path,
-          class: "mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700" %>
-    </div>
-  <% end %>
-</div>
+        <tbody class="divide-y divide-slate-100">
+          <% @jobs.each do |job| %>
+            <tr class="hover:bg-slate-50">
+              <td class="px-6 py-4">
+                <div class="font-medium text-slate-950">
+                  <%= job.name %>
+                </div>
+
+                <% if job.address.present? %>
+                  <div class="mt-1 text-sm text-slate-500">
+                    <%= job.address %>
+                  </div>
+                <% end %>
+              </td>
+
+              <td class="px-6 py-4 text-slate-600">
+                <%= job.customer.name %>
+              </td>
+
+              <td class="px-6 py-4">
+                <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                  <%= job.status.humanize %>
+                </span>
+              </td>
+
+              <td class="px-6 py-4 text-right">
+                <%= link_to "View",
+                    job_path(job),
+                    class: "font-medium text-slate-700 hover:text-slate-950" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% elsif @query.present? || @status.present? %>
+      <div class="px-6 py-12 text-center">
+        <h2 class="font-semibold text-slate-950">No jobs match your filters</h2>
+        <p class="mt-1 text-sm text-slate-500">Try a different search or reset the filters.</p>
+      </div>
+    <% else %>
+      <div class="px-6 py-12 text-center">
+        <h2 class="font-semibold text-slate-950">No jobs yet</h2>
+        <p class="mt-1 text-sm text-slate-500">
+          Create your first job to start tracking work.
+        </p>
+
+        <%= link_to "Create a job",
+            new_job_path,
+            class: "mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700" %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

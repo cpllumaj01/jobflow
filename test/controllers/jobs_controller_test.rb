@@ -151,4 +151,137 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "index returns all owned jobs newest first without filters" do
+    @job.update!(created_at: 2.days.ago)
+    newer_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel", created_at: 1.day.ago)
+
+    get jobs_url
+
+    assert_response :success
+    assert_select "tbody a", count: 2
+    assert_select "tbody a" do |links|
+      assert_equal [job_path(newer_job), job_path(@job)], links.map { |link| link["href"] }
+    end
+    assert_select "a[href=?]", job_path(jobs(:office_buildout)), count: 0
+  end
+
+  test "search matches job name address and customer name case insensitively" do
+    unrelated_customer = @user.customers.create!(name: "Smith Residence")
+    unrelated_job = unrelated_customer.jobs.create!(name: "Deck Replacement", address: "900 Oak Road")
+
+    ["  kItChEn  ", "mAiN sTrEeT", "jOhNsOn"].each do |query|
+      get jobs_url, params: { q: query }
+
+      assert_response :success
+      assert_select "tbody a", count: 1
+      assert_select "tbody a[href=?]", job_path(@job)
+      assert_select "tbody a[href=?]", job_path(unrelated_job), count: 0
+    end
+  end
+
+  test "search and status never expose another user's matching jobs" do
+    other_job = jobs(:office_buildout)
+    other_job.update!(name: @job.name, address: @job.address, status: @job.status)
+    customers(:fairfield).update!(name: customers(:johnson).name)
+
+    ["Kitchen", "Main Street", "Johnson"].each do |query|
+      get jobs_url, params: { q: query, status: @job.status }
+      assert_select "tbody a", count: 1
+      assert_select "tbody a[href=?]", job_path(@job)
+      assert_select "tbody a[href=?]", job_path(other_job), count: 0
+    end
+  end
+
+  test "status filters use existing job statuses" do
+    Job::STATUSES.each do |status|
+      @job.update!(status: status)
+      get jobs_url, params: { status: status }
+      assert_select "tbody a", count: 1
+      assert_select "tbody a[href=?]", job_path(@job)
+    end
+  end
+
+  test "search and status filters work together" do
+    customers(:johnson).jobs.create!(name: "Kitchen Addition", status: "draft")
+    customers(:johnson).jobs.create!(name: "Deck Replacement", status: "in_progress")
+
+    get jobs_url, params: { q: "Kitchen", status: "in_progress" }
+
+    assert_select "tbody a", count: 1
+    assert_select "tbody a[href=?]", job_path(@job)
+  end
+
+  test "unknown status returns no matches and remains selected" do
+    get jobs_url, params: { q: "Kitchen", status: "unknown" }
+
+    assert_response :success
+    assert_select "tbody tr", count: 0
+    assert_select "h2", "No jobs match your filters"
+    assert_select "select[name='status'] option[selected][value='unknown']"
+  end
+
+  test "filter form uses get retains values and offers reset" do
+    get jobs_url, params: { q: "Kitchen", status: "in_progress" }
+
+    assert_select "form[action=?][method='get']", jobs_path do
+      assert_select "input[name='q'][value='Kitchen']"
+      assert_select "select[name='status'] option[selected][value='in_progress']"
+      assert_select "a[href=?]", jobs_path, text: "Reset filters"
+    end
+  end
+
+  test "unmatched search displays filtered empty state" do
+    get jobs_url, params: { q: "missing job" }
+
+    assert_response :success
+    assert_select "h2", "No jobs match your filters"
+    assert_select "h2", text: "No jobs yet", count: 0
+  end
+
+  test "blank filters behave like no filters" do
+    get jobs_url, params: { q: "   ", status: "" }
+
+    assert_select "tbody a[href=?]", job_path(@job)
+  end
+
+  test "search treats SQL wildcards as literal characters" do
+    special_job = customers(:johnson).jobs.create!(name: "100%_complete")
+
+    ["%", "_"].each do |query|
+      get jobs_url, params: { q: query }
+      assert_select "tbody a", count: 1
+      assert_select "tbody a[href=?]", job_path(special_job)
+    end
+
+    get jobs_url, params: { q: "' OR 1=1 --" }
+    assert_response :success
+    assert_select "tbody tr", count: 0
+  end
+
+  test "filter form targets results frame while keeping inputs outside it" do
+    get jobs_url
+
+    assert_select "form[data-controller='job-filters'][data-turbo-frame='jobs_results'][data-turbo-action='replace']" do
+      assert_select "input[name='q'][data-action='input->job-filters#search']"
+      assert_select "select[name='status'][data-action='change->job-filters#submit']"
+      assert_select "a[href=?][data-action='click->job-filters#cancel']", jobs_path
+    end
+    assert_select "turbo-frame#jobs_results[target='_top'][data-turbo-action='replace']" do
+      assert_select "form", count: 0
+      assert_select "a[href=?]", job_path(@job)
+    end
+  end
+
+  test "turbo frame requests return filtered results" do
+    customers(:johnson).jobs.create!(name: "Deck Replacement", status: "draft")
+
+    get jobs_url, params: { q: "Kitchen", status: "in_progress" }, headers: { "Turbo-Frame" => "jobs_results" }
+
+    assert_response :success
+    assert_select "turbo-frame#jobs_results" do
+      assert_select "tbody a", count: 1
+      assert_select "a[href=?]", job_path(@job)
+    end
+  end
 end
