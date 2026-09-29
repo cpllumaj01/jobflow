@@ -18,27 +18,28 @@ Do not assume patterns, libraries, architecture, or conventions from unrelated R
 
 ## Working Style
 
-- Inspect the relevant existing code before editing.
-- Follow the conventions already used in this repository.
-- Prefer small, focused changes and the smallest reasonable diff.
+- Inspect the repository as needed before making changes.
+- Use the files, tests, routes, schema, and configuration already available locally; do not ask the user to provide repository code you can inspect yourself.
+- Proceed directly from inspection to implementation for normal feature work, bug fixes, tests, and UI changes.
+- You are authorized to make the non-destructive file changes and run the development commands necessary to complete the requested ticket without asking for approval first.
+- Do not stop to announce a plan, list files you intend to inspect, or ask permission to make routine changes.
+- Follow existing repository conventions and prefer the smallest focused diff that solves the task.
+- Preserve existing user changes and do not modify unrelated files.
 - Do not refactor unrelated code.
-- Preserve existing user changes, including modified and untracked files.
-- Do not modify unrelated files.
 - Do not add gems, frontend packages, JavaScript dependencies, or other production dependencies without explicit approval.
 - Do not stage, commit, push, reset, clean, discard, or otherwise alter Git history unless explicitly asked.
 
-For normal feature work, bug fixes, tests, and UI changes, proceed directly from inspection to implementation.
-
-Only stop before editing when:
+Only stop before implementation when:
 
 - the requested behavior is materially ambiguous,
-- different approaches would create meaningfully different product behavior,
-- the change requires a new dependency or architectural pattern,
+- reasonable approaches would produce meaningfully different product behavior,
+- a new dependency or architectural pattern is required,
 - the request conflicts with existing project conventions,
 - unexpected working-tree changes could be overwritten,
+- credentials, elevated privileges, or explicit runtime authorization are required,
 - or the requested change appears unsafe or incorrect.
 
-Otherwise: inspect, implement, test, review the diff, and report the result.
+Otherwise: inspect, implement, verify, self-review, and report.
 
 ## Rails
 
@@ -50,26 +51,36 @@ Otherwise: inspect, implement, test, review the diff, and report the result.
 - Avoid service objects, concerns, presenters, policies, state machines, and similar abstractions unless clearly justified or explicitly requested.
 - Follow the existing authentication, routing, ownership, naming, and authorization patterns.
 - Do not add redundant ownership columns when ownership already exists through associations.
-- Do not persist derived values unless explicitly requested.
+- Do not persist values that are intentionally derived from existing data unless explicitly requested.
+- Avoid obvious N+1 queries, but do not introduce unnecessary optimization infrastructure.
 
-## Testing
+## Testing and Verification
 
 - Use Minitest and the existing test style.
 - Add or update tests when behavior changes.
-- Run the narrowest relevant test first, then the full suite when appropriate.
-- Diagnose failing tests before changing additional code.
+- Run the narrowest relevant test first, then the full Rails suite when appropriate.
+- You are authorized to run ordinary non-destructive verification commands without asking, including:
+  - targeted Rails tests,
+  - the full Rails suite,
+  - `git diff --check`,
+  - repository searches,
+  - lightweight local assertions or scripts when relevant.
+- If a normal verification command fails because of a sandbox or environment limitation, use an available safe fallback or retry mechanism without asking when permitted.
+- Only ask the user when the runtime itself requires explicit authorization, elevated privileges, credentials, or access that cannot be obtained automatically.
+- Diagnose test failures before making additional changes.
 - Do not change application behavior merely to satisfy an incorrect or stale test.
-- For intentional UI changes, update presentation-specific assertions instead of restoring obsolete markup.
+- For intentional UI changes, update presentation-specific assertions rather than restoring obsolete markup.
 - Preserve ownership and security coverage.
 
 ## Frontend
 
 - Use the existing ERB and Tailwind CSS approach.
 - Preserve the current JobFlow design language.
-- Do not introduce JavaScript frameworks, Stimulus, npm packages, or a new JavaScript build system unless explicitly requested.
 - Prefer server-rendered Rails solutions.
+- Do not introduce JavaScript frameworks, Stimulus, npm packages, or a new JavaScript build system unless explicitly requested.
+- When JavaScript or Stimulus is explicitly approved for a ticket, use the smallest conventional implementation.
 - Do not broadly redesign unrelated screens during a focused ticket.
-- Do not extract helpers, partials, builders, or components solely to remove minor repetition.
+- Do not extract helpers, partials, builders, or components solely to eliminate minor repetition.
 
 ## Security and Ownership
 
@@ -94,9 +105,11 @@ After a meaningful change:
    - tests run and results,
    - important tradeoffs or issues.
 
-The user reviews the diff before committing. Do not require a separate pre-implementation approval step for routine work.
+The user reviews the final diff before committing.
 
-## Commit Messages
+Do not ask for a separate pre-implementation approval step for routine work.
+
+## Commits
 
 Do not create commits unless explicitly asked.
 
@@ -119,5 +132,6 @@ Examples:
 - `test: cover estimate ownership`
 - `docs: add project overview`
 
-Do not use vague messages like `updates`, `changes`, `fix stuff`, or `misc changes`.
+Do not use vague messages such as `updates`, `changes`, `fix stuff`, or `misc changes`.
+
 Do not push unless explicitly asked.
