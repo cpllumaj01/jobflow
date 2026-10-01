@@ -4,6 +4,10 @@ class Job < ApplicationRecord
   belongs_to :customer
   has_one :estimate, dependent: :destroy
   has_many :change_orders, dependent: :destroy
+  has_many_attached :files
+
+  MAX_FILE_SIZE = 20.megabytes
+  validate :file_sizes
 
   validates :name, presence: true
   validates :status, inclusion: { in: STATUSES }
@@ -23,4 +27,11 @@ class Job < ApplicationRecord
   def current_contract_value
     original_estimate_value + approved_change_order_total
   end
+
+  private
+    def file_sizes
+      files.each do |file|
+        errors.add(:files, "must be 20 MB or smaller per file") if file.blob.byte_size > MAX_FILE_SIZE
+      end
+    end
 end

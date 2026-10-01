@@ -1,6 +1,16 @@
 require "test_helper"
 
 class JobTest < ActiveSupport::TestCase
+  test "file size validation accepts the limit and rejects larger files" do
+    job = jobs(:kitchen_renovation)
+    job.files = [{ io: StringIO.new("notes"), filename: "project.txt", content_type: "text/plain" }]
+    job.files.first.blob.byte_size = Job::MAX_FILE_SIZE
+    assert job.valid?
+    job.files.first.blob.byte_size += 1
+    assert_not job.valid?
+    assert_includes job.errors[:files], "must be 20 MB or smaller per file"
+  end
+
   test "requires a name" do
     job = Job.new(customer: customers(:johnson))
 

@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   resources :jobs do
+    resources :attachments, only: %i[show create destroy], controller: "job_attachments"
     resources :change_orders, only: %i[index show new create edit update] do
       member do
         patch :mark_pending
