@@ -1,4 +1,10 @@
 Rails.application.routes.draw do
+  namespace :api, defaults: { format: :json } do
+    namespace :v1 do
+      resources :jobs, only: %i[index show]
+    end
+  end
+
   resources :jobs do
     resources :attachments, only: %i[show create destroy], controller: "job_attachments"
     resources :change_orders, only: %i[index show new create edit update] do
