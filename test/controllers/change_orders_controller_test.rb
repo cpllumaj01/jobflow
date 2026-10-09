@@ -28,7 +28,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "h2", text: "No change orders yet"
-    assert_select "a[href=?]", new_job_change_order_path(job), text: "Create a change order"
+    assert_select "a[href=?]", new_job_change_order_path(job), text: "New change order", count: 1
   end
 
   test "job page links to change orders" do

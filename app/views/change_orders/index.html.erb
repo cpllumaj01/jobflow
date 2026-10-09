@@ -52,7 +52,7 @@
               </td>
 
               <td class="px-6 py-4">
-                <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                <span class="<%= status_badge_classes(change_order.status) %>">
                   <%= change_order.status.humanize %>
                 </span>
               </td>
@@ -64,7 +64,7 @@
               <td class="px-6 py-4 text-right">
                 <%= link_to "View",
                     job_change_order_path(@job, change_order),
-                    class: "font-medium text-slate-700 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
+                    class: "inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
               </td>
             </tr>
           <% end %>
@@ -79,10 +79,6 @@
         <p class="mt-1 text-sm text-slate-500">
           Add a change order when the scope or cost of the job changes.
         </p>
-
-        <%= link_to "Create a change order",
-            new_job_change_order_path(@job),
-            class: "mt-4 inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
       </div>
     <% end %>
   </div>
