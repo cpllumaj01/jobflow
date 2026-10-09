@@ -7,7 +7,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create" do
-    assert_difference ["User.count", "Session.count"], 1 do
+    assert_difference [ "User.count", "Session.count" ], 1 do
       post sign_up_url, params: {
         user: {
           email_address: "new@example.com",

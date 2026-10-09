@@ -164,7 +164,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "tbody a", count: 2
     assert_select "tbody a" do |links|
-      assert_equal [job_path(newer_job), job_path(@job)], links.map { |link| link["href"] }
+      assert_equal [ job_path(newer_job), job_path(@job) ], links.map { |link| link["href"] }
     end
     assert_select "a[href=?]", job_path(jobs(:office_buildout)), count: 0
   end
@@ -173,7 +173,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     unrelated_customer = @user.customers.create!(name: "Smith Residence")
     unrelated_job = unrelated_customer.jobs.create!(name: "Deck Replacement", address: "900 Oak Road")
 
-    ["  kItChEn  ", "mAiN sTrEeT", "jOhNsOn"].each do |query|
+    [ "  kItChEn  ", "mAiN sTrEeT", "jOhNsOn" ].each do |query|
       get jobs_url, params: { q: query }
 
       assert_response :success
@@ -188,7 +188,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     other_job.update!(name: @job.name, address: @job.address, status: @job.status)
     customers(:fairfield).update!(name: customers(:johnson).name)
 
-    ["Kitchen", "Main Street", "Johnson"].each do |query|
+    [ "Kitchen", "Main Street", "Johnson" ].each do |query|
       get jobs_url, params: { q: query, status: @job.status }
       assert_select "tbody a", count: 1
       assert_select "tbody a[href=?]", job_path(@job)
@@ -251,7 +251,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
   test "search treats SQL wildcards as literal characters" do
     special_job = customers(:johnson).jobs.create!(name: "100%_complete")
 
-    ["%", "_"].each do |query|
+    [ "%", "_" ].each do |query|
       get jobs_url, params: { q: query }
       assert_select "tbody a", count: 1
       assert_select "tbody a[href=?]", job_path(special_job)

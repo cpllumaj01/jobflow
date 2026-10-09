@@ -15,7 +15,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     get job_change_orders_url(@job)
 
     assert_response :success
-    [@change_order, second].each do |change_order|
+    [ @change_order, second ].each do |change_order|
       assert_select "a[href=?]", job_change_order_path(@job, change_order), text: change_order.title
     end
     assert_select "body", text: /Bathroom tile upgrade|Additional conference room outlets/, count: 0
@@ -147,7 +147,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "invalid create preserves input and renders errors and blank rows" do
-    assert_no_difference(["ChangeOrder.count", "ChangeOrderLineItem.count"]) do
+    assert_no_difference([ "ChangeOrder.count", "ChangeOrderLineItem.count" ]) do
       post job_change_orders_url(@job), params: {
         change_order: { title: "Shelving", change_order_line_items_attributes: {
           "0" => { description: "Oak shelves", quantity: "", unit_price: 100 },
@@ -217,8 +217,8 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     other_order = change_orders(:office_outlets)
     original_attributes = other_order.attributes
 
-    [job_change_orders_url(other_job), new_job_change_order_url(other_job),
-      job_change_order_url(other_job, other_order), edit_job_change_order_url(other_job, other_order)].each do |url|
+    [ job_change_orders_url(other_job), new_job_change_order_url(other_job),
+      job_change_order_url(other_job, other_order), edit_job_change_order_url(other_job, other_order) ].each do |url|
       get url
       assert_response :not_found
     end
@@ -235,7 +235,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     own_other_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
     own_other_order = own_other_job.change_orders.create!(title: "Tile upgrade")
 
-    [change_orders(:office_outlets), own_other_order].each do |other_order|
+    [ change_orders(:office_outlets), own_other_order ].each do |other_order|
       original_title = other_order.title
       get job_change_order_url(@job, other_order)
       assert_response :not_found
@@ -251,9 +251,9 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     own_other_order = @job.change_orders.create!(title: "Shelving")
     own_other_item = own_other_order.change_order_line_items.create!(description: "Shelf", quantity: 1, unit_price: 100)
 
-    [change_order_line_items(:office_outlets), own_other_item].each do |other_item|
+    [ change_order_line_items(:office_outlets), own_other_item ].each do |other_item|
       original_attributes = other_item.attributes
-      [{ quantity: 99 }, { _destroy: "1" }].each do |attributes|
+      [ { quantity: 99 }, { _destroy: "1" } ].each do |attributes|
         patch job_change_order_url(@job, @change_order), params: {
           change_order: { change_order_line_items_attributes: { "0" => attributes.merge(id: other_item.id) } }
         }
@@ -266,7 +266,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
   test "create cannot attach an existing foreign line item" do
     item = change_order_line_items(:office_outlets)
     original_attributes = item.attributes
-    assert_no_difference(["ChangeOrder.count", "ChangeOrderLineItem.count"]) do
+    assert_no_difference([ "ChangeOrder.count", "ChangeOrderLineItem.count" ]) do
       post job_change_orders_url(@job), params: {
         change_order: { title: "Unauthorized", change_order_line_items_attributes: {
           "0" => { id: item.id, quantity: 99 }
@@ -338,7 +338,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     own_other_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
     own_other_order = own_other_job.change_orders.create!(title: "Tile upgrade")
 
-    [[other_job, other_order], [@job, other_order], [@job, own_other_order]].each do |job, change_order|
+    [ [ other_job, other_order ], [ @job, other_order ], [ @job, own_other_order ] ].each do |job, change_order|
       original_attributes = change_order.attributes
       %i[mark_pending approve reject].each do |action|
         patch public_send("#{action}_job_change_order_url", job, change_order)
