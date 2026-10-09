@@ -57,12 +57,12 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     second_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel", status: "completed")
     second_job.change_orders.create!(
       title: "Tile upgrade", status: "approved",
-      change_order_line_items_attributes: [{ description: "Tile", quantity: 2, unit_price: "100.25" }]
+      change_order_line_items_attributes: [ { description: "Tile", quantity: 2, unit_price: "100.25" } ]
     )
     customers(:johnson).jobs.create!(name: "No financial items")
     jobs(:office_buildout).create_estimate!(
       status: "approved",
-      estimate_line_items_attributes: [{ description: "Office work", quantity: 1, unit_price: 90000 }]
+      estimate_line_items_attributes: [ { description: "Office work", quantity: 1, unit_price: 90000 } ]
     )
     change_orders(:office_outlets).update!(status: "approved")
 
@@ -77,7 +77,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     %w[draft pending rejected].each do |status|
       jobs(:kitchen_renovation).change_orders.create!(
         title: "Unapproved work #{status}", status: status,
-        change_order_line_items_attributes: [{ description: "Labor", quantity: 2, unit_price: 100 }]
+        change_order_line_items_attributes: [ { description: "Labor", quantity: 2, unit_price: 100 } ]
       )
     end
     change_orders(:office_outlets).update!(status: "approved")

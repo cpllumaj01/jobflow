@@ -25,7 +25,7 @@ class ChangeOrderLineItemTest < ActiveSupport::TestCase
   test "quantity must be greater than zero" do
     line_item = change_order_line_items(:lighting_materials)
 
-    [0, -1, nil].each do |quantity|
+    [ 0, -1, nil ].each do |quantity|
       line_item.quantity = quantity
       assert_not line_item.valid?
       assert line_item.errors[:quantity].present?

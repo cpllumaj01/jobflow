@@ -63,7 +63,7 @@ class ChangeOrderTest < ActiveSupport::TestCase
   test "partially completed nested rows are validated" do
     change_order = ChangeOrder.new(
       job: jobs(:kitchen_renovation), title: "Additional shelving",
-      change_order_line_items_attributes: [{ description: "Oak shelves", quantity: "", unit_price: "" }]
+      change_order_line_items_attributes: [ { description: "Oak shelves", quantity: "", unit_price: "" } ]
     )
 
     assert_not change_order.valid?

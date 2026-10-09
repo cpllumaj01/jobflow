@@ -3,7 +3,7 @@ require "test_helper"
 class JobTest < ActiveSupport::TestCase
   test "file size validation accepts the limit and rejects larger files" do
     job = jobs(:kitchen_renovation)
-    job.files = [{ io: StringIO.new("notes"), filename: "project.txt", content_type: "text/plain" }]
+    job.files = [ { io: StringIO.new("notes"), filename: "project.txt", content_type: "text/plain" } ]
     job.files.first.blob.byte_size = Job::MAX_FILE_SIZE
     assert job.valid?
     job.files.first.blob.byte_size += 1
@@ -108,7 +108,7 @@ class JobTest < ActiveSupport::TestCase
     change_orders(:office_outlets).update!(status: "approved")
     job.change_orders.create!(
       title: "Additional shelving", status: "approved",
-      change_order_line_items_attributes: [{ description: "Oak shelves", quantity: "2.5", unit_price: "100.25" }]
+      change_order_line_items_attributes: [ { description: "Oak shelves", quantity: "2.5", unit_price: "100.25" } ]
     )
 
     assert_equal BigDecimal("694.625"), job.approved_change_order_total
@@ -120,7 +120,7 @@ class JobTest < ActiveSupport::TestCase
     %w[draft pending rejected].each do |status|
       job.change_orders.create!(
         title: "Additional work #{status}", status: status,
-        change_order_line_items_attributes: [{ description: "Labor", quantity: 2, unit_price: 100 }]
+        change_order_line_items_attributes: [ { description: "Labor", quantity: 2, unit_price: 100 } ]
       )
     end
 
@@ -173,7 +173,7 @@ class JobTest < ActiveSupport::TestCase
     %w[draft pending rejected].each do |status|
       job.change_orders.create!(
         title: "Additional work #{status}", status: status,
-        change_order_line_items_attributes: [{ description: "Labor", quantity: 2, unit_price: 100 }]
+        change_order_line_items_attributes: [ { description: "Labor", quantity: 2, unit_price: 100 } ]
       )
     end
     expected_value = job.current_contract_value

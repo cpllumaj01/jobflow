@@ -99,5 +99,4 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "body", text: /Office Buildout/, count: 0
   end
-
 end

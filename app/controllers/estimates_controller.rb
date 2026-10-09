@@ -93,13 +93,13 @@ class EstimatesController < ApplicationController
       params.expect(estimate: [
         :notes,
         :expires_on,
-        estimate_line_items_attributes: [[
+        estimate_line_items_attributes: [ [
           :id,
           :description,
           :quantity,
           :unit_price,
           :_destroy
-        ]]
+        ] ]
       ])
     end
 end

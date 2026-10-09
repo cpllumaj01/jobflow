@@ -8,10 +8,10 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
 
   test "uploads multiple files and appends subsequent uploads" do
     assert_difference("ActiveStorage::Attachment.count", 2) do
-      post job_attachments_url(@job), params: { job: { files: [upload, upload] } }
+      post job_attachments_url(@job), params: { job: { files: [ upload, upload ] } }
     end
     assert_redirected_to job_url(@job)
-    post job_attachments_url(@job), params: { job: { files: [upload] } }
+    post job_attachments_url(@job), params: { job: { files: [ upload ] } }
     assert_equal 3, @job.files.count
 
     get job_url(@job)
@@ -38,7 +38,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "removing one file preserves job and other files and purges storage" do
-    @job.files.attach([upload, upload])
+    @job.files.attach([ upload, upload ])
     file = @job.files.first
     blob = file.blob
     assert_no_difference("Job.count") do
@@ -54,7 +54,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
 
   test "cannot upload to another users job" do
     assert_no_difference("ActiveStorage::Attachment.count") do
-      post job_attachments_url(jobs(:office_buildout)), params: { job: { files: [upload] } }
+      post job_attachments_url(jobs(:office_buildout)), params: { job: { files: [ upload ] } }
     end
     assert_response :not_found
   end
@@ -63,7 +63,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     other_job = jobs(:office_buildout)
     other_job.files.attach(upload)
     file = other_job.files.first
-    [other_job, @job].each do |job|
+    [ other_job, @job ].each do |job|
       get job_attachment_url(job, file)
       assert_response :not_found
       assert_no_difference("ActiveStorage::Attachment.count") do
@@ -92,7 +92,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     get job_attachment_url(@job, file)
     assert_redirected_to new_session_url
     assert_no_difference("ActiveStorage::Attachment.count") do
-      post job_attachments_url(@job), params: { job: { files: [upload] } }
+      post job_attachments_url(@job), params: { job: { files: [ upload ] } }
       assert_redirected_to new_session_url
       delete job_attachment_url(@job, file)
       assert_redirected_to new_session_url
@@ -101,7 +101,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
 
   test "empty uploads and signed blob ids are rejected" do
     @job.files.attach(upload)
-    [[], [""], [@job.files.first.blob.signed_id]].each do |files|
+    [ [], [ "" ], [ @job.files.first.blob.signed_id ] ].each do |files|
       assert_no_difference("ActiveStorage::Attachment.count") do
         post job_attachments_url(@job), params: { job: { files: files } }
       end
@@ -114,8 +114,8 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     @job.files.attach(upload)
     oversized = upload
     oversized.tempfile.truncate(Job::MAX_FILE_SIZE + 1)
-    assert_no_difference(["ActiveStorage::Attachment.count", "ActiveStorage::Blob.count"]) do
-      post job_attachments_url(@job), params: { job: { files: [upload, oversized] } }
+    assert_no_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count" ]) do
+      post job_attachments_url(@job), params: { job: { files: [ upload, oversized ] } }
     end
     assert_response :unprocessable_entity
     assert_select "[role='alert']", text: /20 MB or smaller/

@@ -84,13 +84,13 @@ class ChangeOrdersController < ApplicationController
       params.expect(change_order: [
         :title,
         :description,
-        change_order_line_items_attributes: [[
+        change_order_line_items_attributes: [ [
           :id,
           :description,
           :quantity,
           :unit_price,
           :_destroy
-        ]]
+        ] ]
       ])
     end
 end

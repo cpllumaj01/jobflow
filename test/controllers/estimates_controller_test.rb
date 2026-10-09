@@ -40,7 +40,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
       name: "Deck Replacement"
     )
 
-    assert_difference(["Estimate.count", "EstimateLineItem.count"], 1) do
+    assert_difference([ "Estimate.count", "EstimateLineItem.count" ], 1) do
       post job_estimate_url(job), params: {
         estimate: {
           notes: "Deck estimate",
@@ -79,7 +79,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
   test "invalid create preserves line items and provides blank rows" do
     job = customers(:johnson).jobs.create!(name: "Deck Replacement")
 
-    assert_no_difference(["Estimate.count", "EstimateLineItem.count"]) do
+    assert_no_difference([ "Estimate.count", "EstimateLineItem.count" ]) do
       post job_estimate_url(job), params: {
         estimate: { estimate_line_items_attributes: {
           "0" => { description: "Lumber", quantity: 2, unit_price: "" },
@@ -409,14 +409,14 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "tbody tr", count: 3
     {
-      "Kitchen cabinets" => ["1.0", "$12,000.00", "$12,000.00"],
-      "Quartz countertops" => ["50.0", "$150.00", "$7,500.00"],
-      "Installation labor" => ["100.0", "$75.00", "$7,500.00"]
+      "Kitchen cabinets" => [ "1.0", "$12,000.00", "$12,000.00" ],
+      "Quartz countertops" => [ "50.0", "$150.00", "$7,500.00" ],
+      "Installation labor" => [ "100.0", "$75.00", "$7,500.00" ]
     }.each do |description, values|
       assert_select "tbody tr" do |rows|
         row = rows.find { |element| element.at_css("td").text.strip == description }
         assert_not_nil row
-        assert_equal [description, *values], row.css("td").map { |cell| cell.text.strip }
+        assert_equal [ description, *values ], row.css("td").map { |cell| cell.text.strip }
       end
     end
     assert_select "th", "Line total"
