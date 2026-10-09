@@ -1,0 +1,41 @@
+<div data-testid="line-item" data-nested-line-items-target="row"
+    data-persisted="<%= line_item_form.object.persisted? %>"
+    <%= "hidden" if line_item_form.object.marked_for_destruction? %>>
+  <div class="grid gap-4 px-6 py-5 md:grid-cols-12 md:items-end">
+    <div class="md:col-span-6">
+      <%= line_item_form.label :description,
+          class: "block text-sm font-medium text-slate-700" %>
+
+      <%= line_item_form.text_field :description,
+          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+    </div>
+
+    <div class="md:col-span-2">
+      <%= line_item_form.label :quantity,
+          class: "block text-sm font-medium text-slate-700" %>
+
+      <%= line_item_form.number_field :quantity,
+          step: 0.01,
+          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+    </div>
+
+    <div class="md:col-span-3">
+      <%= line_item_form.label :unit_price, "Unit price",
+          class: "block text-sm font-medium text-slate-700" %>
+
+      <%= line_item_form.number_field :unit_price,
+          step: 0.01,
+          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+    </div>
+
+    <div class="md:col-span-1">
+      <%= line_item_form.hidden_field :_destroy,
+          value: line_item_form.object.marked_for_destruction? ? "1" : "0",
+          data: { nested_line_items_target: "destroy" } %>
+      <button type="button" data-action="nested-line-items#remove"
+          class="cursor-pointer rounded py-2 text-sm text-slate-500 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500">
+        Remove
+      </button>
+    </div>
+  </div>
+</div>

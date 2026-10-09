@@ -1,0 +1,24 @@
+<div data-controller="nested-line-items" class="rounded-xl border border-slate-200 bg-white shadow-sm">
+  <div class="border-b border-slate-200 px-6 py-5">
+    <h2 class="text-lg font-semibold text-slate-950">Line items</h2>
+  </div>
+
+  <div data-nested-line-items-target="items" class="divide-y divide-slate-100">
+    <%= form.fields_for association do |line_item_form| %>
+      <%= render "shared/line_item_fields", line_item_form: line_item_form %>
+    <% end %>
+  </div>
+
+  <template data-nested-line-items-target="template">
+    <%= form.fields_for association, new_line_item, child_index: "NEW_LINE_ITEM" do |line_item_form| %>
+      <%= render "shared/line_item_fields", line_item_form: line_item_form %>
+    <% end %>
+  </template>
+
+  <div class="border-t border-slate-200 px-6 py-4">
+    <button type="button" data-action="nested-line-items#add"
+        class="cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500">
+      Add line item
+    </button>
+  </div>
+</div>

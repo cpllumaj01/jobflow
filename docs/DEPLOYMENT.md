@@ -79,6 +79,8 @@ Build assets without production secrets:
 RAILS_ENV=production SECRET_KEY_BASE_DUMMY=1 BUNDLE_WITHOUT=development:test bin/rails assets:precompile
 ```
 
+Troubleshooting: Normal Rails development picks up Stimulus/controller changes after a browser refresh; asset precompilation and Rails restarts are not routine development steps. Only if you intentionally ran a local production `assets:precompile` and left `public/assets/.manifest.json` behind, run `bin/rails assets:clobber` and refresh the browser to recover from stale compiled assets. This is an exceptional recovery step, not part of the normal development workflow.
+
 When Docker is available:
 
 ```sh

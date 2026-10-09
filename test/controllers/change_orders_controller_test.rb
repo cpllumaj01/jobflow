@@ -37,13 +37,13 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", job_change_orders_path(@job), text: /View change orders/
   end
 
-  test "new provides blank rows without lifecycle fields" do
+  test "new provides one blank row without lifecycle fields" do
     get new_job_change_order_url(@job)
 
     assert_response :success
     assert_select "form[action=?]", job_change_orders_path(@job)
-    assert_select "input[name$='[quantity]']", count: 3
-    assert_select "input[name$='[quantity]'][value]", count: 0
+    assert_select "[data-nested-line-items-target=items] input[name$='[quantity]']", count: 1
+    assert_select "[data-nested-line-items-target=items] input[name$='[quantity]'][value]", count: 0
     %w[status approved_at requested_at job_id].each do |field|
       assert_select "[name=?]", "change_order[#{field}]", count: 0
     end
@@ -92,8 +92,9 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
       get edit_job_change_order_url(@job, @change_order)
 
       assert_response :success
-      assert_select "input[name$='[quantity]']", count: 5
-      assert_select "input[type='checkbox'][name$='[_destroy]']", count: 2
+      assert_select "[data-nested-line-items-target=items] input[name$='[quantity]']", count: 2
+      assert_select "input[type='checkbox'][name$='[_destroy]']", count: 0
+      assert_select "[data-nested-line-items-target=items] input[name$='[_destroy]']", count: 2
 
       patch job_change_order_url(@job, @change_order), params: { change_order: { title: "Edited while #{status}" } }
       assert_redirected_to job_change_order_url(@job, @change_order)
@@ -146,7 +147,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_equal BigDecimal("187.50"), @change_order.reload.total
   end
 
-  test "invalid create preserves input and renders errors and blank rows" do
+  test "invalid create preserves input and renders errors without adding blank rows" do
     assert_no_difference([ "ChangeOrder.count", "ChangeOrderLineItem.count" ]) do
       post job_change_orders_url(@job), params: {
         change_order: { title: "Shelving", change_order_line_items_attributes: {
@@ -160,8 +161,8 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "New change order"
     assert_select "li", text: /quantity is not a number/
     assert_select "input[name='change_order[title]'][value='Shelving']"
-    assert_select "input[name$='[description]'][value='Oak shelves']"
-    assert_select "input[name$='[quantity]']", count: 4
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Oak shelves']"
+    assert_select "[data-nested-line-items-target=items] input[name$='[quantity]']", count: 1
   end
 
   test "invalid update preserves input and rolls back nested changes" do
@@ -182,9 +183,29 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "Edit change order"
     assert_select "li", text: /quantity is not a number/
     assert_select "input[name='change_order[title]'][value='Unsaved title']"
-    assert_select "input[name$='[description]'][value='Dimmer']"
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Dimmer']"
     assert_equal original_title, @change_order.reload.title
     assert_equal original_quantity, item.reload.quantity
+  end
+
+  test "invalid update preserves pending line item removal" do
+    item = change_order_line_items(:lighting_materials)
+
+    assert_no_difference("ChangeOrderLineItem.count") do
+      patch job_change_order_url(@job, @change_order), params: {
+        change_order: { change_order_line_items_attributes: {
+          "0" => { id: item.id, _destroy: "1" },
+          "1791555555000" => { description: "Invalid item", quantity: "", unit_price: 25 }
+        } }
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select "[data-nested-line-items-target=row][hidden]" do
+      assert_select "input[name$='[_destroy]'][value='1']", count: 1
+    end
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Invalid item']"
+    assert item.class.exists?(item.id)
   end
 
   test "approved change orders cannot be edited or updated" do

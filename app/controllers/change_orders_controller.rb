@@ -12,7 +12,7 @@ class ChangeOrdersController < ApplicationController
 
   def new
     @change_order = @job.change_orders.new
-    build_blank_line_items
+    @change_order.change_order_line_items.build(quantity: nil)
   end
 
   def create
@@ -21,20 +21,17 @@ class ChangeOrdersController < ApplicationController
     if @change_order.save
       redirect_to job_change_order_path(@job, @change_order), notice: "Change order was successfully created."
     else
-      build_blank_line_items
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
-    build_blank_line_items
   end
 
   def update
     if @change_order.update(change_order_params)
       redirect_to job_change_order_path(@job, @change_order), notice: "Change order was successfully updated."
     else
-      build_blank_line_items
       render :edit, status: :unprocessable_entity
     end
   end
@@ -74,10 +71,6 @@ class ChangeOrdersController < ApplicationController
         redirect_to job_change_order_path(@job, @change_order),
           alert: "Approved change orders cannot be edited. Mark the change order as pending or rejected before editing.", status: :see_other
       end
-    end
-
-    def build_blank_line_items
-      3.times { @change_order.change_order_line_items.build(quantity: nil) }
     end
 
     def change_order_params
