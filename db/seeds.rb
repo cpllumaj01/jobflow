@@ -1,3 +1,8 @@
+abort "Demo seeds are disabled in production." if Rails.env.production?
+
+require "stringio"
+
+# All contacts and projects below are fictional demonstration data.
 puts "Seeding JobFlow demo data..."
 
 user = User.find_or_initialize_by(email_address: "demo@jobflow.test")
@@ -199,7 +204,8 @@ thompson = user.customers.create!(
   contact_name: "James Thompson",
   email: "james.thompson@example.com",
   phone: "203-555-0199",
-  address: "17 Maple Ridge Road, Trumbull, CT"
+  address: "17 Maple Ridge Road, Trumbull, CT",
+  notes: "Planning the deck first; garage conversion deferred due to budget."
 )
 
 deck = thompson.jobs.create!(
@@ -231,6 +237,89 @@ deck_estimate.estimate_line_items.create!([
     unit_price: 85
   }
 ])
+
+# Additional kitchen changes demonstrate unapproved work without increasing
+# the current contract value.
+kitchen.change_orders.create!(
+  title: "Pantry shelving upgrade",
+  description: "Proposed adjustable oak shelves and pull-out storage for the pantry.",
+  status: "draft",
+  change_order_line_items_attributes: [
+    { description: "Oak shelving", quantity: 6, unit_price: 125 },
+    { description: "Installation labor", quantity: 4, unit_price: 85 }
+  ]
+)
+
+kitchen.change_orders.create!(
+  title: "Premium backsplash upgrade",
+  description: "Handmade tile alternative declined; retain the original backsplash scope.",
+  status: "rejected",
+  requested_at: 14.days.ago,
+  change_order_line_items_attributes: [
+    { description: "Premium tile material allowance", quantity: 35, unit_price: 28 },
+    { description: "Additional tile installation labor", quantity: 8, unit_price: 85 }
+  ]
+)
+
+# Approval predates work; updating an already-approved record preserves these
+# historical dates through the existing approval timestamp callbacks.
+kitchen_estimate.update!(approved_at: 28.days.ago)
+lighting_change.update!(approved_at: 8.days.ago)
+bathroom_estimate.update!(approved_at: 7.days.ago)
+
+basement = rivera.jobs.create!(
+  name: "Basement Finishing",
+  description: "Finished a family room and home office with insulated walls, lighting, and durable flooring.",
+  address: rivera.address,
+  status: "completed",
+  start_date: Date.current - 100.days,
+  estimated_completion_date: Date.current - 35.days,
+  completed_at: 38.days.ago
+)
+basement_estimate = basement.create_estimate!(
+  status: "approved",
+  expires_on: Date.current - 95.days,
+  notes: "Completed within the approved scope; final walkthrough accepted.",
+  estimate_line_items_attributes: [
+    { description: "Framing, insulation, and drywall", quantity: 1, unit_price: 12_500 },
+    { description: "Lighting and electrical installation", quantity: 1, unit_price: 4_800 },
+    { description: "Luxury vinyl flooring", quantity: 650, unit_price: 8 },
+    { description: "Trim and painting labor", quantity: 48, unit_price: 85 }
+  ]
+)
+basement_estimate.update!(approved_at: 110.days.ago)
+
+garage = thompson.jobs.create!(
+  name: "Garage Conversion",
+  description: "Proposed conversion to a home studio cancelled before scheduling; customer retained the garage for parking.",
+  address: thompson.address,
+  status: "cancelled"
+)
+garage.create_estimate!(
+  status: "rejected",
+  expires_on: Date.current - 14.days,
+  notes: "Proposal declined due to budget. No work was started.",
+  estimate_line_items_attributes: [
+    { description: "Insulation and interior walls", quantity: 1, unit_price: 9_600 },
+    { description: "Windows and exterior door", quantity: 1, unit_price: 6_400 },
+    { description: "Electrical and heating allowance", quantity: 1, unit_price: 7_500 }
+  ]
+)
+
+kitchen.files.attach(
+  io: StringIO.new(<<~SCOPE),
+    Kitchen Renovation - Demo Project Scope
+
+    Install custom cabinetry, quartz countertops, and finish carpentry.
+    Approved addition: four under-cabinet LED lighting kits with dimmer controls.
+    Larger island: pending approval. Pantry shelving: draft proposal.
+    Premium backsplash: declined; retain the original scope.
+
+    Fictional project document for the JobFlow demonstration account.
+  SCOPE
+  filename: "kitchen-renovation-scope.txt",
+  content_type: "text/plain"
+)
 
 puts
 puts "Seed complete."
