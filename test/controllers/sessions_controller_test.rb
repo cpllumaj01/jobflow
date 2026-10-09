@@ -6,6 +6,10 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
   test "new" do
     get new_session_path
     assert_response :success
+    assert_select 'link[rel="icon"]', count: 1 do
+      assert_select '[href="/jobflow-icon.svg"][type="image/svg+xml"][sizes="any"]'
+    end
+    assert_select 'link[rel="apple-touch-icon"][href="/jobflow-icon.png"]'
   end
 
   test "create with valid credentials" do
