@@ -36,59 +36,7 @@
     </div>
   </div>
 
-  <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-    <div class="border-b border-slate-200 px-6 py-5">
-      <h2 class="text-lg font-semibold text-slate-950">
-        Line items
-      </h2>
-
-      <p class="mt-1 text-sm text-slate-500">
-        Leave unused rows blank. Save and edit the change order again to add more items.
-      </p>
-    </div>
-
-    <div class="divide-y divide-slate-100">
-      <%= form.fields_for :change_order_line_items do |line_item_form| %>
-        <div class="grid gap-4 px-6 py-5 md:grid-cols-12 md:items-end">
-          <div class="md:col-span-6">
-            <%= line_item_form.label :description,
-                class: "block text-sm font-medium text-slate-700" %>
-
-            <%= line_item_form.text_field :description,
-                class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
-          </div>
-
-          <div class="md:col-span-2">
-            <%= line_item_form.label :quantity,
-                class: "block text-sm font-medium text-slate-700" %>
-
-            <%= line_item_form.number_field :quantity,
-                step: 0.01,
-                class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
-          </div>
-
-          <div class="md:col-span-3">
-            <%= line_item_form.label :unit_price, "Unit price",
-                class: "block text-sm font-medium text-slate-700" %>
-
-            <%= line_item_form.number_field :unit_price,
-                step: 0.01,
-                class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
-          </div>
-
-          <% if line_item_form.object.persisted? %>
-            <div class="md:col-span-1">
-              <label class="flex cursor-pointer items-center gap-2 py-2 text-sm text-red-700">
-                <%= line_item_form.check_box :_destroy,
-                    class: "h-4 w-4 cursor-pointer rounded border-slate-300 accent-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700" %>
-                Remove
-              </label>
-            </div>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-  </div>
+  <%= render "shared/line_items", form: form, association: :change_order_line_items, new_line_item: ChangeOrderLineItem.new(quantity: nil) %>
 
   <div class="flex items-center gap-3">
     <%= form.submit class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>

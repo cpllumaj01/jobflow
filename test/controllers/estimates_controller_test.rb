@@ -25,8 +25,8 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     get new_job_estimate_url(job)
 
     assert_response :success
-    assert_select "input[name$='[description]']", count: 3
-    assert_select "input[name$='[quantity]'][value]", count: 0
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]']", count: 1
+    assert_select "[data-nested-line-items-target=items] input[name$='[quantity]'][value]", count: 0
   end
 
   test "new redirects when job already has estimate" do
@@ -40,27 +40,30 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
       name: "Deck Replacement"
     )
 
-    assert_difference([ "Estimate.count", "EstimateLineItem.count" ], 1) do
-      post job_estimate_url(job), params: {
-        estimate: {
-          notes: "Deck estimate",
-          expires_on: "2026-10-31",
-          estimate_line_items_attributes: {
-            "0" => {
-              description: "Lumber",
-              quantity: 10,
-              unit_price: 50
-            },
-            "1" => { description: "", quantity: "", unit_price: "" }
+    assert_difference("Estimate.count", 1) do
+      assert_difference("EstimateLineItem.count", 2) do
+        post job_estimate_url(job), params: {
+          estimate: {
+            notes: "Deck estimate",
+            expires_on: "2026-10-31",
+            estimate_line_items_attributes: {
+              "0" => {
+                description: "Lumber",
+                quantity: 10,
+                unit_price: 50
+              },
+              "1791555555000" => { description: "Labor", quantity: 2, unit_price: 75 },
+              "1" => { description: "", quantity: "", unit_price: "" }
+            }
           }
         }
-      }
+      end
     end
 
     estimate = job.reload.estimate
 
     assert_equal "draft", estimate.status
-    assert_equal 500, estimate.total
+    assert_equal 650, estimate.total
     assert_redirected_to job_estimate_url(job)
   end
 
@@ -76,7 +79,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to job_estimate_url(@job)
   end
 
-  test "invalid create preserves line items and provides blank rows" do
+  test "invalid create preserves line items without adding blank rows" do
     job = customers(:johnson).jobs.create!(name: "Deck Replacement")
 
     assert_no_difference([ "Estimate.count", "EstimateLineItem.count" ]) do
@@ -89,16 +92,17 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :unprocessable_entity
-    assert_select "input[name$='[description]'][value='Lumber']"
-    assert_select "input[name$='[description]']", count: 4
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Lumber']"
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]']", count: 1
   end
 
   test "should get edit" do
     get edit_job_estimate_url(@job)
 
     assert_response :success
-    assert_select "input[name$='[description]']", count: 6
-    assert_select "input[type='checkbox'][name$='[_destroy]']", count: 3
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]']", count: 3
+    assert_select "input[type='checkbox'][name$='[_destroy]']", count: 0
+    assert_select "[data-nested-line-items-target=items] input[name$='[_destroy]']", count: 3
   end
 
   test "update adds line items and ignores unused rows" do
@@ -132,6 +136,26 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_not EstimateLineItem.exists?(line_item.id)
   end
 
+  test "invalid update preserves pending line item removal" do
+    item = estimate_line_items(:cabinets)
+
+    assert_no_difference("EstimateLineItem.count") do
+      patch job_estimate_url(@job), params: {
+        estimate: { estimate_line_items_attributes: {
+          "0" => { id: item.id, _destroy: "1" },
+          "1791555555000" => { description: "Invalid item", quantity: "", unit_price: 25 }
+        } }
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select "[data-nested-line-items-target=row][hidden]" do
+      assert_select "input[name$='[_destroy]'][value='1']", count: 1
+    end
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Invalid item']"
+    assert item.class.exists?(item.id)
+  end
+
   test "invalid new line item preserves input without saving other changes" do
     assert_no_difference("EstimateLineItem.count") do
       patch job_estimate_url(@job), params: {
@@ -143,7 +167,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :unprocessable_entity
-    assert_select "input[name$='[description]'][value='Paint']"
+    assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Paint']"
     assert_select "textarea", text: "Unsaved notes"
     assert_not_equal "Unsaved notes", @estimate.reload.notes
   end

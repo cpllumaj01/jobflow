@@ -14,7 +14,7 @@ class EstimatesController < ApplicationController
     end
 
     @estimate = @job.build_estimate
-    build_blank_line_items
+    @estimate.estimate_line_items.build(quantity: nil)
   end
 
   def create
@@ -28,20 +28,17 @@ class EstimatesController < ApplicationController
     if @estimate.save
       redirect_to job_estimate_path(@job), notice: "Estimate was successfully created."
     else
-      build_blank_line_items
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
-    build_blank_line_items
   end
 
   def update
     if @estimate.update(estimate_params)
       redirect_to job_estimate_path(@job), notice: "Estimate was successfully updated."
     else
-      build_blank_line_items
       render :edit, status: :unprocessable_entity
     end
   end
@@ -74,10 +71,6 @@ class EstimatesController < ApplicationController
         flash.now[:alert] = @estimate.errors.full_messages.to_sentence
         render :show, status: :unprocessable_entity
       end
-    end
-
-    def build_blank_line_items
-      3.times { @estimate.estimate_line_items.build(quantity: nil) }
     end
 
     def set_job
