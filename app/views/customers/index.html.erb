@@ -15,7 +15,7 @@
 
   <%= link_to "New customer",
       new_customer_path,
-      class: "rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700" %>
+      class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
 </div>
 
 <div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -56,7 +56,7 @@
             <td class="px-6 py-4 text-right">
               <%= link_to "View",
                   customer_path(customer),
-                  class: "font-medium text-slate-700 hover:text-slate-950" %>
+                  class: "font-medium text-slate-700 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
             </td>
           </tr>
         <% end %>
@@ -72,7 +72,7 @@
 
       <%= link_to "Create a customer",
           new_customer_path,
-          class: "mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700" %>
+          class: "mt-4 inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
     </div>
   <% end %>
 </div>

@@ -23,25 +23,25 @@
   <body class="min-h-screen bg-slate-50 text-slate-900">
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <%= link_to root_path, class: "text-xl font-bold tracking-tight text-slate-900" do %>
+        <%= link_to root_path, class: "text-xl font-bold tracking-tight text-slate-900 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" do %>
           JobFlow
         <% end %>
 
         <% if Current.user %>
           <nav class="flex items-center gap-6 text-sm font-medium">
             <%= link_to "Dashboard", root_path,
-                class: "text-slate-600 hover:text-slate-950" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
 
             <%= link_to "Customers", customers_path,
-                class: "text-slate-600 hover:text-slate-950" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
 
             <%= link_to "Jobs", jobs_path,
-                class: "text-slate-600 hover:text-slate-950" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
 
             <%= button_to "Log out",
                 session_path,
                 method: :delete,
-                class: "cursor-pointer text-slate-600 hover:text-slate-950" %>
+                class: "cursor-pointer text-slate-600 hover:text-slate-950 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
           </nav>
         <% end %>
       </div>

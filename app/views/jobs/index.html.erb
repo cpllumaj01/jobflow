@@ -13,7 +13,7 @@
 
   <%= link_to "New job",
       new_job_path,
-      class: "rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700" %>
+      class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
 </div>
 
 <%= form_with url: jobs_path, method: :get,
@@ -23,7 +23,7 @@
     <%= form.label :q, "Search jobs", class: "block text-sm font-medium text-slate-700" %>
     <%= form.search_field :q, value: @query, placeholder: "Job name, address, or customer",
         data: { action: "input->job-filters#search" },
-        class: "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900" %>
+        class: "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-400 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div>
@@ -32,11 +32,11 @@
     <% status_options << ["Unknown status: #{@status}", @status] if @status.present? && !Job::STATUSES.include?(@status) %>
     <%= form.select :status, status_options, { include_blank: "All statuses", selected: @status },
         data: { action: "change->job-filters#submit" },
-        class: "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900" %>
+        class: "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-400 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
   </div>
 
-  <%= form.submit "Filter jobs", class: "rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" %>
-  <%= link_to "Reset filters", jobs_path, data: { action: "click->job-filters#cancel" }, class: "px-2 py-2 text-sm font-medium text-slate-600 hover:text-slate-950" %>
+  <%= form.submit "Filter jobs", class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+  <%= link_to "Reset filters", jobs_path, data: { action: "click->job-filters#cancel" }, class: "px-2 py-2 text-sm font-medium text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4" %>
 <% end %>
 
 <%= turbo_frame_tag "jobs_results", target: "_top", data: { turbo_action: "replace" } do %>
@@ -80,7 +80,7 @@
               <td class="px-6 py-4 text-right">
                 <%= link_to "View",
                     job_path(job),
-                    class: "font-medium text-slate-700 hover:text-slate-950" %>
+                    class: "font-medium text-slate-700 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
               </td>
             </tr>
           <% end %>
@@ -100,7 +100,7 @@
 
         <%= link_to "Create a job",
             new_job_path,
-            class: "mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700" %>
+            class: "mt-4 inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
       </div>
     <% end %>
   </div>

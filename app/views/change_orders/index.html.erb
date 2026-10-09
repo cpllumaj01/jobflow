@@ -5,7 +5,7 @@
     <div>
       <%= link_to "← #{@job.name}",
           job_path(@job),
-          class: "text-sm font-medium text-slate-500 hover:text-slate-900" %>
+          class: "text-sm font-medium text-slate-500 hover:text-slate-900 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
 
       <h1 class="mt-3 text-3xl font-bold tracking-tight text-slate-950">
         Change orders
@@ -19,7 +19,7 @@
 
     <%= link_to "New change order",
         new_job_change_order_path(@job),
-        class: "rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700" %>
+        class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
   </div>
 
   <div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -41,7 +41,7 @@
               <div class="font-medium text-slate-950">
                 <%= link_to change_order.title,
                     job_change_order_path(@job, change_order),
-                    class: "hover:text-slate-600" %>
+                    class: "hover:text-slate-600 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
               </div>
 
                 <% if change_order.description.present? %>
@@ -64,7 +64,7 @@
               <td class="px-6 py-4 text-right">
                 <%= link_to "View",
                     job_change_order_path(@job, change_order),
-                    class: "font-medium text-slate-700 hover:text-slate-950" %>
+                    class: "font-medium text-slate-700 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
               </td>
             </tr>
           <% end %>
@@ -82,7 +82,7 @@
 
         <%= link_to "Create a change order",
             new_job_change_order_path(@job),
-            class: "mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700" %>
+            class: "mt-4 inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
       </div>
     <% end %>
   </div>

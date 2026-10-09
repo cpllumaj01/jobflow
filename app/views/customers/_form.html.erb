@@ -18,7 +18,7 @@
         class: "block text-sm font-medium text-slate-700" %>
 
     <%= form.text_field :name,
-        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div>
@@ -26,7 +26,7 @@
         class: "block text-sm font-medium text-slate-700" %>
 
     <%= form.text_field :contact_name,
-        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div class="grid gap-6 sm:grid-cols-2">
@@ -35,7 +35,7 @@
           class: "block text-sm font-medium text-slate-700" %>
 
       <%= form.email_field :email,
-          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
     </div>
 
     <div>
@@ -43,7 +43,7 @@
           class: "block text-sm font-medium text-slate-700" %>
 
       <%= form.telephone_field :phone,
-          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+          class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
     </div>
   </div>
 
@@ -52,7 +52,7 @@
         class: "block text-sm font-medium text-slate-700" %>
 
     <%= form.text_field :address,
-        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div>
@@ -61,14 +61,14 @@
 
     <%= form.textarea :notes,
         rows: 5,
-        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none focus:border-slate-500" %>
+        class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div class="flex items-center gap-3 border-t border-slate-200 pt-6">
-    <%= form.submit class: "cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700" %>
+    <%= form.submit class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
 
     <%= link_to "Cancel",
         customer.persisted? ? customer_path(customer) : customers_path,
-        class: "text-sm font-medium text-slate-600 hover:text-slate-950" %>
+        class: "text-sm font-medium text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
   </div>
 <% end %>

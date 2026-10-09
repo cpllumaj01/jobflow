@@ -19,22 +19,22 @@
     <%= form_with model: @user, url: sign_up_path, class: "mt-6 space-y-5" do |form| %>
       <div>
         <%= form.label :email_address, "Email address", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "email", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "email", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
       </div>
       <div>
         <%= form.label :password, "Password", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.password_field :password, required: true, autocomplete: "new-password", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        <%= form.password_field :password, required: true, autocomplete: "new-password", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
       </div>
       <div>
         <%= form.label :password_confirmation, "Confirm password", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
       </div>
 
-      <%= form.submit "Create account", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <%= form.submit "Create account", class: "w-full inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
     <% end %>
   </div>
 
   <div class="mt-6 text-center text-sm text-slate-600">
-    <p>Already have an account? <%= link_to "Sign in", new_session_path, class: "font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-950" %></p>
+    <p>Already have an account? <%= link_to "Sign in", new_session_path, class: "font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 py-2" %></p>
   </div>
 </div>
