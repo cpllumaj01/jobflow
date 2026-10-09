@@ -1,6 +1,6 @@
 # JobFlow
 
-JobFlow is a Ruby on Rails application for managing contractor workflows:
+JobFlow is a Ruby on Rails application for managing residential contractor projects from customer intake through estimates, change orders, and completion.
 
 **Customer → Job → Estimate → Change Orders → Completion**
 
@@ -15,7 +15,7 @@ The job workspace brings project details, pricing, changes, and files together. 
 - Contract values calculated from approved estimates and approved change orders.
 - Dashboard counts for customers, jobs, active jobs, pending estimates, and pending changes, plus total current contract value.
 - Job search by job name, address, or customer name, combined with status filtering.
-- Multiple job attachments through Active Storage, with owner-only downloads and individual removal. Files are limited to 20 MB each; there is no content-type allowlist.
+- Multiple job attachments through Active Storage, with owner-only downloads, individual removal, and a 20 MB per-file limit.
 - Read-only, versioned Jobs API scoped to the signed-in user.
 
 ## Stack
@@ -29,8 +29,8 @@ Versions below come from `.ruby-version` and `Gemfile.lock`.
 | Database | PostgreSQL (`pg` 1.6.3; server version is not pinned) |
 | Views and styling | ERB, Tailwind CSS 4.3.3 via `tailwindcss-rails` 4.6.0 |
 | Browser behavior | Turbo, Stimulus via `stimulus-rails` 1.3.4, import maps |
-| Files | Active Storage with local disk storage |
-| Testing | Minitest model and controller/integration tests; Capybara 3.40.0 and Selenium are installed, but no system tests are currently defined |
+| Files | Active Storage; local disk in development and test |
+| Testing | Minitest model and controller/integration tests |
 
 JavaScript is served through import maps; the current development workflow does not require a Node package installation.
 
@@ -48,9 +48,9 @@ User
 
 A job belongs to a customer, and a customer belongs to a user. Controllers load jobs through `Current.user.jobs` and nested resources through their owned job. Ownership is inherited rather than copied into redundant user columns.
 
-Each job has at most one estimate and many change orders. Explicit actions mark estimates sent and change orders pending, or approve/reject either. Approved records cannot be edited until their status changes. These actions are separate from ordinary form parameters.
+Each job has at most one estimate and many change orders. Explicit lifecycle actions mark estimates sent and change orders pending, or approve/reject either. Approved records cannot be edited until their status changes. Lifecycle fields are kept separate from ordinary form parameters.
 
-Contract values are computed by the Job model, not stored as additional database columns:
+Contract values are computed by the `Job` model rather than stored as additional database columns:
 
 ```text
 Original estimate value = approved estimate total, otherwise zero
@@ -58,11 +58,13 @@ Approved changes = sum of approved change-order totals
 Current contract value = original estimate value + approved changes
 ```
 
-The UI uses server-rendered Rails forms. A small Stimulus controller debounces job searches by 300 ms, with Turbo updating the results. Dashboard and API queries preload pricing associations to avoid per-job queries. Attachment routes enforce Job ownership; default public Active Storage routes are disabled.
+The UI primarily uses server-rendered Rails forms. A small Stimulus controller debounces job searches by 300 ms, with Turbo updating the results. Dashboard and API queries preload pricing associations to avoid per-job queries.
+
+Job attachments use Active Storage. Attachment access is routed through owned Jobs, and the default Active Storage routes are disabled so file access follows the application's ownership rules.
 
 ## Run locally
 
-Install Ruby **4.0.7**, PostgreSQL, and the compiler/PostgreSQL client headers needed to build gems. Start PostgreSQL before preparing the database.
+Install **Ruby 4.0.7**, PostgreSQL, and the compiler/PostgreSQL client headers needed to build gems. Start PostgreSQL before preparing the database.
 
 The development and test configuration in `config/database.yml` uses local PostgreSQL socket connections with a role matching your operating-system username. That role needs permission to create databases. If it is missing, a PostgreSQL administrator can create it with:
 
@@ -70,7 +72,9 @@ The development and test configuration in `config/database.yml` uses local Postg
 createuser --createdb YOUR_OS_USERNAME
 ```
 
-Replace `YOUR_OS_USERNAME` with the account running Rails. If your PostgreSQL installation requires a host, username, or password, configure the local connection using the options described in `config/database.yml`; do not commit credentials. No application-specific environment variables are required for the default local setup.
+Replace `YOUR_OS_USERNAME` with the account running Rails. If your PostgreSQL installation requires a host, username, or password, configure the local connection using the options described in `config/database.yml`; do not commit credentials.
+
+No application-specific environment variables are required for the default local setup.
 
 From the repository root:
 
@@ -81,42 +85,69 @@ bin/rails db:prepare
 bin/dev
 ```
 
-Open http://localhost:3000. `bin/dev` starts Rails and the Tailwind watcher using `Procfile.dev`; it installs Foreman if it is missing. Development uploads are stored in `storage/`, and test uploads in `tmp/storage/`.
+Open [http://localhost:3000](http://localhost:3000).
 
-`db:prepare` creates the databases and loads the schema as needed, applies pending migrations, and loads seeds when initializing a new database. To apply subsequent migrations explicitly:
+`bin/dev` starts Rails and the Tailwind watcher using `Procfile.dev`; it installs Foreman if it is missing. Development uploads are stored in `storage/`, and test uploads in `tmp/storage/`.
+
+`db:prepare` creates the databases and loads the schema as needed, applies pending migrations, and loads seeds when initializing a new database.
+
+To apply subsequent migrations explicitly:
 
 ```sh
 bin/rails db:migrate
 ```
 
-The repository also provides `bin/setup --skip-server`, which installs missing gems, prepares the database, and clears logs/temp files. Run `bin/dev` afterward. To run Rails without the CSS watcher, first build styles with `bin/rails tailwindcss:build`, then run `bin/rails server`.
+The repository also provides:
+
+```sh
+bin/setup --skip-server
+```
+
+This installs missing gems, prepares the database, and clears logs/temp files. Run `bin/dev` afterward.
+
+To run Rails without the CSS watcher, first build the styles and then start the server:
+
+```sh
+bin/rails tailwindcss:build
+bin/rails server
+```
 
 ### Demo data
 
-To load or refresh the demo explicitly:
+To load or refresh the demo data explicitly:
 
 ```sh
 bin/rails db:seed
 ```
 
-**Development/demo-only login:** `demo@jobflow.test` / `password`.
+**Development/demo-only login:** `demo@jobflow.test` / `password`
 
 Seeds create four customers, four jobs (kitchen renovation, bathroom remodel, office buildout, and deck replacement), four estimates, and two kitchen change orders. Their varied statuses demonstrate dashboard metrics and approved-versus-pending pricing.
 
-Reseeding resets the demo password and deletes/recreates the demo account's customers and their nested project data. Other users' data is left alone. The seed script has no production-environment guard; use it only for local demonstrations.
+Reseeding resets the demo password and deletes/recreates the demo account's customers and their nested project data. Other users' data is left alone.
+
+The seed script has no production-environment guard; use it only for local demonstrations.
 
 ## Read-only Jobs API
 
-Sign in through the application, then open these URLs in the same browser session:
+Sign in through the application, then open these endpoints in the same browser session:
 
 ```http
 GET /api/v1/jobs
 GET /api/v1/jobs/:id
 ```
 
-Both endpoints use the existing authenticated session, with no API token scheme. Only the signed-in user's jobs are returned. Unauthenticated requests redirect to sign-in. Missing jobs and another user's jobs both return HTTP 404 with `{"error":"Job not found"}`.
+Both endpoints use the existing authenticated session; there is no separate API-token scheme. Only jobs owned by the signed-in user are returned.
 
-Representative index response (illustrative IDs and timestamps):
+Unauthenticated requests redirect to sign-in. Missing jobs and another user's jobs both return HTTP 404:
+
+```json
+{
+  "error": "Job not found"
+}
+```
+
+Representative index response with illustrative IDs and timestamps:
 
 ```json
 {
@@ -128,7 +159,10 @@ Representative index response (illustrative IDs and timestamps):
       "status": "in_progress",
       "created_at": "2026-09-01T10:00:00.000Z",
       "updated_at": "2026-09-01T10:00:00.000Z",
-      "customer": { "id": 1, "name": "Johnson Residence" },
+      "customer": {
+        "id": 1,
+        "name": "Johnson Residence"
+      },
       "original_estimate_value": "27000.0",
       "approved_change_order_total": "444.0",
       "current_contract_value": "27444.0"
@@ -137,7 +171,12 @@ Representative index response (illustrative IDs and timestamps):
 }
 ```
 
-The show response uses a `job` wrapper with the same core fields, plus an `estimate` summary (`id`, `status`, `total`, or `null`) and a `change_orders` array (`id`, `title`, `status`, `total`). Monetary values are decimal strings. The index is unpaginated and ordered newest first. There are no API write endpoints.
+The show response uses a `job` wrapper with the same core fields, plus:
+
+- an `estimate` summary containing `id`, `status`, and `total`, or `null` when no estimate exists
+- a `change_orders` array containing `id`, `title`, `status`, and `total`
+
+Monetary values are returned as decimal strings. The index is unpaginated and ordered newest first. There are no API write endpoints.
 
 ## Tests
 
@@ -147,7 +186,9 @@ With PostgreSQL running:
 bin/rails test
 ```
 
-The suite covers authentication, registration, password reset, ownership isolation, nested-resource access, pricing/lifecycle behavior, attachments, search/filtering, and API responses. To run the API tests alone:
+The suite covers authentication, registration, password reset, ownership isolation, nested-resource access, pricing and lifecycle behavior, attachments, search/filtering, and API responses.
+
+To run the API tests alone:
 
 ```sh
 bin/rails test test/controllers/api/v1/jobs_controller_test.rb
@@ -155,11 +196,28 @@ bin/rails test test/controllers/api/v1/jobs_controller_test.rb
 
 ## Screenshots
 
-Screenshots have not been captured yet. Add images at the paths below and replace each placeholder with a Markdown image using that path.
+Screenshots will be added from the seeded demo environment.
 
-| Screen | Suggested file | Capture |
-| --- | --- | --- |
-| Dashboard | `docs/screenshots/dashboard.png` | Metrics and current contract value |
-| Job workspace | `docs/screenshots/job-workspace.png` | Job details, pricing summary, and attachments |
-| Estimate | `docs/screenshots/estimate.png` | Line items, total, and lifecycle actions |
-| Change Orders | `docs/screenshots/change-orders.png` | Changes and approval statuses |
+### Dashboard
+
+Overview of customers, active work, pending approvals, and current contract value.
+
+`docs/screenshots/dashboard.png`
+
+### Job workspace
+
+Central job view with project details, pricing summaries, change orders, and attachments.
+
+`docs/screenshots/job-workspace.png`
+
+### Estimate
+
+Estimate line items, calculated total, status, and lifecycle actions.
+
+`docs/screenshots/estimate.png`
+
+### Change Orders
+
+Job changes with line-item totals and approval statuses.
+
+`docs/screenshots/change-orders.png`
