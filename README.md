@@ -6,6 +6,15 @@ JobFlow is a Ruby on Rails application for managing residential contractor proje
 
 The job workspace brings project details, pricing, changes, and files together. The project demonstrates Rails domain modeling, relational data, authenticated ownership, nested resources, lifecycle actions, derived financial calculations, file handling, and a small JSON API.
 
+## Live Demo
+
+**[Open the live JobFlow demo](https://jobflow-production-8c01.up.railway.app)**
+
+- **Email:** `demo@jobflow.test`
+- **Password:** `passwordpassword`
+
+Sign in to explore fictional customers, jobs, estimates, change orders, and a sample attachment. These credentials are intentionally public and belong only to the demo account.
+
 ## Features
 
 - Session-based sign-in, registration, sign-out, and password reset.
@@ -29,7 +38,7 @@ Versions below come from `.ruby-version` and `Gemfile.lock`.
 | Database | PostgreSQL (`pg` 1.6.3; server version is not pinned) |
 | Views and styling | ERB, Tailwind CSS 4.3.3 via `tailwindcss-rails` 4.6.0 |
 | Browser behavior | Turbo, Stimulus via `stimulus-rails` 1.3.4, import maps |
-| Files | Active Storage; local disk in development and test |
+| Files | Active Storage; local disk in development and test, persistent storage on Railway in production |
 | Testing | Minitest model and controller/integration tests |
 
 JavaScript is served through import maps; the current development workflow does not require a Node package installation.
@@ -120,13 +129,13 @@ To load or refresh the demo data explicitly:
 bin/rails db:seed
 ```
 
-**Development/demo-only login:** `demo@jobflow.test` / `password`
+**Local development seed login:** `demo@jobflow.test` / `password` (the live demo uses the credentials listed above).
 
 Seeds create four customers, six jobs (kitchen renovation, bathroom remodel, office buildout, deck replacement, basement finishing, and garage conversion), six estimates, four kitchen change orders, and a kitchen scope attachment. Their varied statuses demonstrate dashboard metrics and approved-versus-pending pricing.
 
 Reseeding resets the demo password and deletes/recreates the demo account's customers and their nested project data. Other users' data is left alone.
 
-Demo seeds abort in production. Production database preparation skips automatic seeding. To explicitly populate the deployed demo account, use the protected `demo:bootstrap` task described in [the production demo workflow](docs/DEPLOYMENT.md#production-demo-data).
+The live demo account is populated with production demo data. Demo seeds abort in production, and production database preparation skips automatic seeding. To explicitly refresh the deployed demo account, use the protected `demo:bootstrap` task described in [the production demo workflow](docs/DEPLOYMENT.md#production-demo-data).
 
 ## Read-only Jobs API
 
@@ -188,6 +197,8 @@ bin/rails test
 
 The suite covers authentication, registration, password reset, ownership isolation, nested-resource access, pricing and lifecycle behavior, attachments, search/filtering, and API responses.
 
+GitHub Actions CI is configured and passing, with Rails tests, system tests, RuboCop linting, and Ruby/gem/JavaScript security checks. The workflow runs on pull requests and pushes to `main`.
+
 To run the API tests alone:
 
 ```sh
@@ -196,32 +207,34 @@ bin/rails test test/controllers/api/v1/jobs_controller_test.rb
 
 ## Production deployment
 
-See [the production deployment checklist](docs/DEPLOYMENT.md) for database, secrets, persistent storage, TLS, mail delivery, and build requirements. Deployment templates still require hosting-specific configuration; no public deployment has been performed.
+JobFlow is publicly deployed on Railway with PostgreSQL and persistent storage for Active Storage attachments. The live demo account is ready to use with the credentials above.
+
+See [the production deployment checklist](docs/DEPLOYMENT.md) for database, secrets, persistent storage, TLS, mail delivery, build requirements, and the production demo refresh workflow. The generated Kamal deployment template remains separate from the current Railway deployment and requires hosting-specific configuration.
 
 ## Screenshots
 
-Screenshots will be added from the seeded demo environment.
+Screenshots show the seeded demo environment.
 
 ### Dashboard
 
 Overview of customers, active work, pending approvals, and current contract value.
 
-`docs/screenshots/dashboard.png`
+![JobFlow dashboard](docs/screenshots/dashboard.png)
 
 ### Job workspace
 
 Central job view with project details, pricing summaries, change orders, and attachments.
 
-`docs/screenshots/job-workspace.png`
+![JobFlow job workspace](docs/screenshots/job-workspace.png)
 
 ### Estimate
 
 Estimate line items, calculated total, status, and lifecycle actions.
 
-`docs/screenshots/estimate.png`
+![JobFlow estimate](docs/screenshots/estimate.png)
 
 ### Change Orders
 
 Job changes with line-item totals and approval statuses.
 
-`docs/screenshots/change-orders.png`
+![JobFlow change orders](docs/screenshots/change-orders.png)
