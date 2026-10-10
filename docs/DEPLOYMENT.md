@@ -61,6 +61,27 @@ For another host, choose either:
 
 Do not deploy the current Disk configuration onto an ephemeral filesystem. No cloud provider has been selected or added.
 
+## Production demo data
+
+Deploy the code and prepare the production database normally first. Normal production `db:seed` remains blocked, and `db:prepare` still skips seeds. Demo bootstrap is a separate manual operation; do not add it to startup or deployment commands.
+
+1. Confirm that `demo@jobflow.test` is the intended demonstration account. Every bootstrap replaces that account's customers and all nested jobs, estimates, change orders, and attachments, and resets its password. Other users are untouched. Back up the database and storage before running it.
+2. Supply `DEMO_PASSWORD` through the deployed service's secret environment (Railway service Variables), using a generated password of 16–72 bytes. There is no production default. Do not place the value in source, command arguments, logs, or shell history. The task never prints it. The password is intentionally used for demo sign-in; never reuse an administrator or personal password.
+3. Confirm that the running web service has its persistent volume mounted at `/rails/storage`, writable by UID 1000. Production currently uses Active Storage Disk. Run this **inside that running service's container**, through a Railway SSH session, from `/rails`:
+
+   ```sh
+   RAILS_ENV=production ALLOW_PRODUCTION_DEMO_BOOTSTRAP=true bin/rails demo:bootstrap
+   ```
+
+   `DEMO_PASSWORD` must already be available in the container environment. Keep the opt-in on this one command rather than setting it permanently. Do not use a local `railway run`, a build step, or a deployment pre-command: the scope attachment must be written onto the same persistent disk used by the web process.
+4. Sign in as `demo@jobflow.test` with the supplied password. Check the dashboard, kitchen contract value ($25,960), and download `kitchen-renovation-scope.txt`. Remove the temporary `DEMO_PASSWORD` variable after use if desired; the account retains only its password digest. Supply it again on the next refresh.
+
+The shared loader creates four fictional customers, six jobs covering every job status, six estimates, four kitchen change orders covering every change-order status, and one text attachment. Reruns replace this same account's dataset rather than adding duplicates. Record IDs change, and dates remain relative to the day of the refresh, as with local seeds. The account itself is retained.
+
+The task rejects non-production environments, an opt-in other than `true`, and missing or unsuitable passwords before modifying records. A database transaction protects the replacement, and a PostgreSQL transaction advisory lock serializes concurrent loader runs. Database errors before commit roll back the password and replacement together. Active Storage uploads occur after commit and cannot be atomic with PostgreSQL: if a disk/upload failure occurs, correct storage and rerun the task. Replaced attachments use Active Storage's normal asynchronous purge lifecycle; keep the existing job worker running for cleanup. No unrelated blobs are globally purged by the task.
+
+Local verification uses Rails transactional fixtures and a temporary test Disk directory, with production environment checks simulated only around task invocation. It exercises two refreshes with attachment upload callbacks, attachment downloads, password authentication, unrelated-user preservation, guard rejection, and rollback on a mid-refresh failure; it does not contact a deployed database.
+
 ## HTTPS, domain, and email prerequisites
 
 Production enforces HTTPS and secure cookies, with HTTP `/up` exempted from redirects for health probes. Configure a TLS-terminating proxy and verify forwarded HTTPS headers. If the trusted proxy requires `config.assume_ssl`, enable it for that deployment. The Kamal TLS proxy block is still commented out. Configure the real domain and an appropriate `config.hosts` allowlist before public exposure; host restrictions are currently unset.

@@ -126,7 +126,7 @@ Seeds create four customers, six jobs (kitchen renovation, bathroom remodel, off
 
 Reseeding resets the demo password and deletes/recreates the demo account's customers and their nested project data. Other users' data is left alone.
 
-Demo seeds abort in production. Production database preparation skips automatic seeding.
+Demo seeds abort in production. Production database preparation skips automatic seeding. To explicitly populate the deployed demo account, use the protected `demo:bootstrap` task described in [the production demo workflow](docs/DEPLOYMENT.md#production-demo-data).
 
 ## Read-only Jobs API
 
