@@ -53,7 +53,8 @@ env:
 
     # Match this to any external database server to configure Active Record correctly
     # Use jobflow-db for a db accessory server on same machine via local kamal docker network.
-    # DB_HOST: 192.168.0.2
+    # Configure DATABASE_URL, CACHE_DATABASE_URL, QUEUE_DATABASE_URL, and CABLE_DATABASE_URL
+    # as secrets after provisioning PostgreSQL; see docs/DEPLOYMENT.md.
 
     # Log everything from Rails
     # RAILS_LOG_LEVEL: debug
@@ -66,7 +67,7 @@ aliases:
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
 
-# Use a persistent storage volume for sqlite database files and local Active Storage files.
+# Persistent local Active Storage uploads (PostgreSQL requires separate provisioning).
 # Recommended to change this to a mounted volume path that is backed up off server.
 volumes:
   - "jobflow_storage:/rails/storage"
@@ -85,7 +86,7 @@ builder:
   #
   # # Pass arguments and secrets to the Docker build process
   # args:
-  #   RUBY_VERSION: 3.2.2
+  #   RUBY_VERSION: 4.0.7
   # secrets:
   #   - GITHUB_TOKEN
   #   - RAILS_MASTER_KEY

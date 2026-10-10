@@ -36,3 +36,10 @@
 
 /app/assets/builds/*
 !/app/assets/builds/.keep
+
+# Local credentials and database exports must not enter source control or images.
+/config/credentials/*.key
+/.aws/
+/*.sql
+/*.dump
+/*.sql.gz

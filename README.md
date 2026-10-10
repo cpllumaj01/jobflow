@@ -122,11 +122,11 @@ bin/rails db:seed
 
 **Development/demo-only login:** `demo@jobflow.test` / `password`
 
-Seeds create four customers, four jobs (kitchen renovation, bathroom remodel, office buildout, and deck replacement), four estimates, and two kitchen change orders. Their varied statuses demonstrate dashboard metrics and approved-versus-pending pricing.
+Seeds create four customers, six jobs (kitchen renovation, bathroom remodel, office buildout, deck replacement, basement finishing, and garage conversion), six estimates, four kitchen change orders, and a kitchen scope attachment. Their varied statuses demonstrate dashboard metrics and approved-versus-pending pricing.
 
 Reseeding resets the demo password and deletes/recreates the demo account's customers and their nested project data. Other users' data is left alone.
 
-The seed script has no production-environment guard; use it only for local demonstrations.
+Demo seeds abort in production. Production database preparation skips automatic seeding.
 
 ## Read-only Jobs API
 
@@ -193,6 +193,10 @@ To run the API tests alone:
 ```sh
 bin/rails test test/controllers/api/v1/jobs_controller_test.rb
 ```
+
+## Production deployment
+
+See [the production deployment checklist](docs/DEPLOYMENT.md) for database, secrets, persistent storage, TLS, mail delivery, and build requirements. Deployment templates still require hosting-specific configuration; no public deployment has been performed.
 
 ## Screenshots
 

@@ -49,3 +49,9 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Local credentials and database exports must not enter source control or images.
+/.aws/
+/*.sql
+/*.dump
+/*.sql.gz

@@ -87,6 +87,8 @@ test:
 production:
   primary: &primary_production
     <<: *default
+    # Demo seeds deliberately abort in production; first-boot preparation must skip them.
+    seeds: false
     database: jobflow_production
     username: jobflow
     password: <%= ENV["JOBFLOW_DATABASE_PASSWORD"] %>
