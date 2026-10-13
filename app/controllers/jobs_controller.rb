@@ -36,8 +36,9 @@ class JobsController < ApplicationController
 
   def create
     attributes = job_params
-    customer = Current.user.customers.find(attributes.delete(:customer_id))
-    @job = customer.jobs.new(attributes)
+    customer_id = attributes.delete(:customer_id)
+    @job = Job.new(attributes)
+    @job.customer = Current.user.customers.find(customer_id) if customer_id.present?
 
     if @job.save
       redirect_to @job, notice: "Job was successfully created."
