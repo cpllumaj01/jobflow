@@ -6,6 +6,12 @@ class ResendDelivery < Resend::Mailer
     mail[:options] = { idempotency_key: mail.message_id }
     super
   rescue Resend::Error => error
-    raise error.class.new("Resend delivery failed; check the Resend dashboard"), cause: nil
+    message = "Resend delivery failed (#{error.class.name})"
+
+    if error.is_a?(Resend::Error::RateLimitExceededError) && error.retry_after.is_a?(Numeric)
+      message += "; retry after #{error.retry_after}s"
+    end
+
+    raise error.class.new(message), cause: nil
   end
 end
