@@ -1,9 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["items", "template", "row", "destroy"]
+  static targets = ["items", "template", "row", "destroy", "addButton"]
 
   nextIndex = Date.now()
+
+  connect() {
+    this.addButtonTarget.disabled = false
+  }
 
   add() {
     const index = this.nextIndex++
