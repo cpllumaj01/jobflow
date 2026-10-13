@@ -56,7 +56,8 @@ class ResendDeliveryTest < ActionMailer::TestCase
       %w[private-provider-response test-only-key private-token private-header-value].each do |sensitive|
         refute_includes error.full_message, sensitive
       end
-      assert_empty error.headers
+      assert_equal({ "retry-after" => "42" }, error.headers)
+      assert_equal 42, error.retry_after
     end
   end
 

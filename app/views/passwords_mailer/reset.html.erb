@@ -1,6 +1,6 @@
 <p>You requested a password reset for your JobFlow account.</p>
 
-<p><%= link_to "Reset your JobFlow password", edit_password_url(@user.password_reset_token) %></p>
+<p><%= link_to "Reset your JobFlow password", edit_password_url(@token) %></p>
 
 <p>This link will expire in <%= distance_of_time_in_words(0, @user.password_reset_token_expires_in) %>.</p>
 

@@ -1,7 +1,7 @@
 You requested a password reset for your JobFlow account.
 
 Reset your JobFlow password:
-<%= edit_password_url(@user.password_reset_token) %>
+<%= edit_password_url(@token) %>
 
 This link will expire in <%= distance_of_time_in_words(0, @user.password_reset_token_expires_in) %>.
 
