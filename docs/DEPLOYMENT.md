@@ -1,6 +1,6 @@
 # Production deployment checklist
 
-JobFlow has not been deployed by this preparation ticket. Select the hosting target before using the generated deployment template.
+JobFlow is deployed on Railway. The generated Kamal template is separate from that deployment.
 
 ## Existing tooling
 
@@ -48,7 +48,7 @@ The default container entrypoint prepares databases automatically. For a hosting
 | `PORT`, `RAILS_MAX_THREADS`, `WEB_CONCURRENCY`, `JOB_CONCURRENCY` | Optional process tuning; size database connections for both web and workers. |
 | `KAMAL_REGISTRY_PASSWORD` | Only needed if the selected container registry requires authentication; configure its reference in Kamal. |
 
-No storage credentials are currently needed for Disk storage. No SMTP environment variables are wired into the application yet. Never paste secret values into deployment files, command examples, or logs.
+No storage credentials are currently needed for Disk storage. Production email uses the variables below. Never paste secret values into deployment files, command examples, or logs.
 
 ## Persistent attachments
 
@@ -86,9 +86,39 @@ Local verification uses Rails transactional fixtures and a temporary test Disk d
 
 Production enforces HTTPS and secure cookies, with HTTP `/up` exempted from redirects for health probes. Configure a TLS-terminating proxy and verify forwarded HTTPS headers. If the trusted proxy requires `config.assume_ssl`, enable it for that deployment. The Kamal TLS proxy block is still commented out. Configure the real domain and an appropriate `config.hosts` allowlist before public exposure; host restrictions are currently unset.
 
-Password reset calls `deliver_later`, so it requires working Solid Queue databases and a running worker as well as mail delivery. Rails currently uses its default SMTP transport (localhost:25) with no configured provider. Production mail links still use `example.com`, and `ApplicationMailer` uses `from@example.com`.
+### Production email on Railway (issue #27)
 
-Before enabling public password reset, configure an SMTP/provider endpoint, credentials, TLS/authentication settings, verified sender, and production URL host/protocol. The commented SMTP credentials example in `production.rb` is not active configuration. No provider is included in this ticket. Sign-in itself does not require email delivery; password reset will not work until these prerequisites are met.
+Password reset retains Rails' existing `deliver_later` workflow and 15-minute tokens. Action Mailer uses the official `resend` Ruby SDK's HTTPS delivery integration. A small subclass only adds the message-ID idempotency option and replaces provider error text with a safe error before Rails logs it; the SDK owns HTTP requests and mail serialization. The SDK adds `httparty`, `csv`, and `multi_xml` as new transitive dependencies. HTTPS works on all Railway plans, while [Railway limits SMTP to Pro and above](https://docs.railway.com/networking/outbound-networking). See the [Resend API reference](https://resend.com/docs/api-reference/emails/send-email).
+
+Set these Railway service Variables on **both web and worker services**:
+
+| Variable | Value |
+| --- | --- |
+| `APP_HOST` | Public application hostname only, without `https://`, port, or path. Use the current Railway public hostname now. All mail links use HTTPS. |
+| `MAILER_FROM` | A verified sender, for example `JobFlow <passwords@your-sending-domain>` (replace with an address on your own verified domain). |
+| `RESEND_API_KEY` | Secret Resend API key with Sending access for the sending domain. |
+| `SOLID_QUEUE_IN_PUMA=true` | For the existing single-service worker option; alternatively run a separate Railway worker with `bin/jobs`. Keep the existing queue database configuration. |
+
+Set `APP_HOST`, `MAILER_FROM`, and `RESEND_API_KEY` **before deploying this release**, including before merging if Railway automatically deploys merges. Production boot (including `db:prepare`) rejects missing email variables and malformed `APP_HOST` values. Leave `RESEND_BASE_URL` unset; production rejects overrides of the official HTTPS endpoint. Docker asset precompilation skips those checks with the existing build-only `SECRET_KEY_BASE_DUMMY`; never set that variable at runtime. Development and test delivery settings stay unchanged; tests use the in-memory delivery adapter and fake HTTP responses.
+
+Activation:
+
+1. Create a Resend account and add a sending domain or subdomain you control. Follow [Resend domain verification](https://resend.com/docs/dashboard/domains/introduction): install the supplied SPF/DKIM DNS records and wait for verification. You cannot verify a Railway-owned `up.railway.app` domain as your sending domain. Resend's testing sender is restricted and is not a production substitute.
+2. Create a domain-scoped Sending API key and enter it directly in Railway Variables. Never put it in Git, screenshots, shell history, or logs. Choose a sender on the verified domain and set the variables above.
+3. Ensure Solid Queue's database is prepared and a worker is running. A separate worker needs the same release, Rails secrets, database connections, and email variables as the web service. Redeploy web and workers together.
+4. Keep production logging at the default `info` level. The production formatter redacts tokens in reset URL paths, including redirects; parameter filtering already covers `token` and passwords. Configure any proxy, request tracing, or external log collector to redact `/passwords/:token` as well. Avoid debug HTTP logging and printing mail bodies or provider credentials.
+
+The sending domain and application host are independent. Issue #28 can later update `APP_HOST` after custom-domain DNS/TLS is ready; this issue does not change app domains or DNS. Existing tokens contain no host, and no Railway-generated URL is hardcoded in configuration.
+
+End-to-end verification after deployment:
+
+1. Use an account with an inbox you control (the demo `.test` address cannot receive mail). Request a reset through the application's Forgot password form.
+2. Confirm the generic confirmation response, then check the worker for completion or delivery errors and the Resend dashboard for delivery/bounce status. Errors propagate to the job and are retained as failed Solid Queue executions; they are not silently ignored. Resolve configuration/provider problems and retry failed jobs deliberately; no automatic retry policy was added.
+3. Confirm actual receipt, including spam folders, correct JobFlow sender/subject, readable HTML/text, and an HTTPS link on `APP_HOST` ending in `/passwords/:token/edit`. Do not paste that link into logs or tickets.
+4. Open it within 15 minutes, set a new password, and sign in with it. Confirm the old password fails and the used reset link is rejected. Existing sessions are revoked by the existing reset controller. Request another link and confirm it is rejected after expiration.
+5. Request a reset for an unregistered address and confirm the same response and no email.
+
+The official SDK uses its default HTTP timeout behavior and raises provider errors. The wrapper re-raises the same error type with a generic message and no original exception cause, keeping provider response bodies out of Rails logs and failed-job records. Network failures also propagate. The wrapper sends a message-ID-based idempotency key; this does not guarantee deduplication across job retries that regenerate the email. Provider acceptance alone does not prove inbox delivery. No real email has been sent or received as part of repository validation; activation and the end-to-end check remain required.
 
 ## Health, build, and verification
 
