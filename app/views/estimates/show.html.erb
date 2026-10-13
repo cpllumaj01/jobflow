@@ -22,11 +22,17 @@
       </p>
     </div>
 
-    <% unless @estimate.status == "approved" %>
-      <%= link_to "Edit estimate",
-          edit_job_estimate_path(@job),
-          class: "inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
-    <% end %>
+    <div class="flex flex-wrap justify-end gap-3">
+      <%= link_to "Download PDF",
+          job_estimate_path(@job, format: :pdf),
+          data: { turbo: false },
+          class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <% unless @estimate.status == "approved" %>
+        <%= link_to "Edit estimate",
+            edit_job_estimate_path(@job),
+            class: "inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <% end %>
+    </div>
   </div>
 
   <% if @estimate.status == "approved" %>

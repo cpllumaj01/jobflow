@@ -5,6 +5,14 @@ class EstimatesController < ApplicationController
   before_action :require_editable_estimate, only: %i[edit update]
 
   def show
+    respond_to do |format|
+      format.html
+      format.pdf do
+        send_data EstimatePdf.new(@estimate).render,
+          filename: "estimate-#{@estimate.id}-job-#{@job.id}.pdf",
+          type: "application/pdf", disposition: "attachment"
+      end
+    end
   end
 
   def new

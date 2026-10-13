@@ -1,4 +1,5 @@
 require "test_helper"
+require "pdf/reader"
 
 class EstimatesControllerTest < ActionDispatch::IntegrationTest
   setup do
@@ -8,6 +9,111 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     @estimate.update!(status: "draft")
 
     sign_in_as @user
+  end
+
+  test "downloads a PDF with estimate details without changing data" do
+    @estimate.update!(status: "approved")
+    original_attributes = @estimate.attributes
+    original_items = @estimate.estimate_line_items.order(:id).map(&:attributes)
+
+    get job_estimate_url(@job, format: :pdf)
+
+    assert_response :success
+    assert_equal "application/pdf", response.media_type
+    assert_match(/attachment;/, response.headers["Content-Disposition"])
+    assert_includes response.headers["Content-Disposition"], "estimate-#{@estimate.id}-job-#{@job.id}.pdf"
+    text = PDF::Reader.new(StringIO.new(response.body)).pages.map(&:text).join("\n")
+    [ "JobFlow", "Estimate ##{@estimate.id}", "Status: Approved",
+      @job.customer.name, @job.customer.contact_name, @job.customer.email,
+      @job.customer.phone, @job.customer.address, @job.name, @job.description,
+      @job.start_date.to_fs(:long), @job.estimated_completion_date.to_fs(:long),
+      @estimate.expires_on.to_fs(:long), @estimate.notes,
+      "Description", "Quantity", "Unit price", "Line total", "Estimate total", "$27,000.00"
+    ].each { |value| assert_includes text, value }
+    @estimate.estimate_line_items.each do |item|
+      assert_match(/#{Regexp.escape(item.description)}\s+#{Regexp.escape(item.quantity.to_s("F"))}\s+#{Regexp.escape(ActiveSupport::NumberHelper.number_to_currency(item.unit_price))}\s+#{Regexp.escape(ActiveSupport::NumberHelper.number_to_currency(item.line_total))}/, text)
+    end
+    assert_equal original_attributes, @estimate.reload.attributes
+    assert_equal original_items, @estimate.estimate_line_items.order(:id).map(&:attributes)
+  end
+
+  test "PDF handles missing optional fields and no line items" do
+    @job.customer.update!(contact_name: nil, email: nil, phone: nil, address: nil)
+    @job.update!(address: nil, description: nil, start_date: nil, estimated_completion_date: nil)
+    @estimate.update!(notes: nil, expires_on: nil)
+    @estimate.estimate_line_items.destroy_all
+
+    get job_estimate_url(@job, format: :pdf)
+
+    assert_response :success
+    text = PDF::Reader.new(StringIO.new(response.body)).pages.map(&:text).join("\n")
+    [ @job.customer.name, @job.name, "Status: Draft", "No line items yet.", "$0.00" ].each do |value|
+      assert_includes text, value
+    end
+    assert_not_includes text, "Expires:"
+    assert_not_includes text, "Notes"
+  end
+
+  test "PDF paginates line items with repeated headers and preserves wrapped content" do
+    @estimate.estimate_line_items.destroy_all
+    100.times do |index|
+      @estimate.estimate_line_items.create!(
+        description: "Item #{index}: " + "Detailed installation work " * 8 + "End #{index}",
+        quantity: 1.5, unit_price: 12.34)
+    end
+    @estimate.update!(notes: "Final customer notes")
+    @job.customer.update!(name: "José Müller")
+
+    get job_estimate_url(@job, format: :pdf)
+
+    assert_response :success
+    pages = PDF::Reader.new(StringIO.new(response.body)).pages
+    assert_operator pages.size, :>, 1
+    text = pages.map(&:text).join("\n")
+    100.times do |index|
+      assert_includes text, "Item #{index}:"
+      assert_includes text, "End #{index}"
+    end
+    pages.each do |page|
+      if page.text.match?(/Item \d+:/)
+        [ "Description", "Quantity", "Unit price", "Line total" ].each do |header|
+          assert_includes page.text, header
+        end
+      end
+    end
+    assert_equal 100, text.scan("$12.34").size
+    assert_equal 100, text.scan("$18.51").size
+    assert_includes text, "$1,851.00"
+    assert_includes text, "Final customer notes"
+    assert_includes text, "José Müller"
+  end
+
+  test "PDF requires authentication" do
+    sign_out
+    get job_estimate_url(@job, format: :pdf)
+    assert_redirected_to new_session_url
+  end
+
+  test "PDF cannot access another user's estimate" do
+    other_job = jobs(:office_buildout)
+    other_job.create_estimate!
+    get job_estimate_url(other_job, format: :pdf)
+    assert_response :not_found
+  end
+
+  test "PDF returns not found for a job without an estimate" do
+    job = @user.customers.first.jobs.create!(name: "No estimate")
+    get job_estimate_url(job, format: :pdf)
+    assert_response :not_found
+    assert_nil job.reload.estimate
+  end
+
+  test "show offers a PDF download for every estimate status" do
+    Estimate::STATUSES.each do |status|
+      @estimate.update!(status: status)
+      get job_estimate_url(@job)
+      assert_select "a[href=?][data-turbo='false']", job_estimate_path(@job, format: :pdf), text: "Download PDF"
+    end
   end
 
   test "should show estimate" do
