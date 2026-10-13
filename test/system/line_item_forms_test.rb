@@ -169,6 +169,8 @@ class LineItemFormsTest < ApplicationSystemTestCase
       click_on "Remove"
     end
     assert_no_field "Description", with: removed.description
+    scroll_to find_button(@submit), align: :center
+    assert_button @submit, obscured: false
     click_on @submit
 
     assert_text "successfully updated"
