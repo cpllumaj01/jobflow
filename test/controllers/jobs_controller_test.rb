@@ -22,6 +22,55 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "new only offers owned customers without a blank option" do
+    get new_job_url
+
+    assert_response :success
+    assert_select "select[name='job[customer_id]'] option", count: @user.customers.count
+    assert_select "select[name='job[customer_id]'] option[value='']", count: 0
+    assert_select "select[name='job[customer_id]'] option[value=?]", customers(:fairfield).id, count: 0
+  end
+
+  test "creation requires a customer" do
+    [ nil, "" ].each do |customer_id|
+      assert_no_difference("Job.count") do
+        post jobs_url, params: { job: { customer_id: customer_id, name: "Bathroom Remodel" } }
+      end
+
+      assert_response :unprocessable_entity
+      assert_select "li", text: "Customer must exist"
+      assert_select "input[name='job[name]'][value='Bathroom Remodel']"
+    end
+  end
+
+  test "creation rejects a nonexistent customer" do
+    assert_no_difference("Job.count") do
+      post jobs_url, params: { job: { customer_id: Customer.maximum(:id) + 1, name: "Bathroom Remodel" } }
+    end
+
+    assert_response :not_found
+  end
+
+  test "new and failed creation show an empty state when user has no customers" do
+    @user.customers.destroy_all
+
+    get new_job_url
+
+    assert_response :success
+    assert_select "h2", "No customers yet"
+    assert_select "a[href=?]", new_customer_path, text: "New customer"
+    assert_select "form[action=?]", jobs_path, count: 0
+
+    assert_no_difference("Job.count") do
+      post jobs_url, params: { job: { name: "Bathroom Remodel" } }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select "h2", "No customers yet"
+    assert_select "a[href=?]", new_customer_path, text: "New customer"
+    assert_select "form[action=?]", jobs_path, count: 0
+  end
+
   test "should create job" do
     assert_difference("Job.count") do
       post jobs_url, params: {

@@ -369,16 +369,28 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "show provides lifecycle buttons and edit excludes lifecycle fields" do
-    get job_change_order_url(@job, @change_order)
-    assert_response :success
-    %i[mark_pending approve reject].each do |action|
-      assert_select "form[action=?]", public_send("#{action}_job_change_order_path", @job, @change_order) do
-        assert_select "input[name='_method'][value='patch']"
-        assert_select "button", count: 1
-      end
-    end
+  test "show provides lifecycle buttons appropriate to each status" do
+    ChangeOrder::STATUSES.each do |status|
+      @change_order.update!(status: status)
+      get job_change_order_url(@job, @change_order)
 
+      assert_response :success
+      { mark_pending: "pending", approve: "approved", reject: "rejected" }.each do |action, target_status|
+        path = public_send("#{action}_job_change_order_path", @job, @change_order)
+        if status == target_status
+          assert_select "form[action=?]", path, count: 0
+        else
+          assert_select "form[action=?]", path, count: 1 do
+            assert_select "input[name='_method'][value='patch']"
+            assert_select "button", count: 1
+          end
+        end
+      end
+      assert_select "a[href=?]", edit_job_change_order_path(@job, @change_order), count: status == "approved" ? 0 : 1
+    end
+  end
+
+  test "edit excludes lifecycle fields" do
     get edit_job_change_order_url(@job, @change_order)
     assert_response :success
     %w[status approved_at requested_at].each do |field|
