@@ -87,8 +87,11 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
   test "retries reuse identical payload and key after an uncertain network outcome" do
     with_http_responses(Net::ReadTimeout.new, { id: "accepted-message" }) do
       PasswordsMailer.deliver_reset_later(@user)
+      ciphertext = enqueued_jobs.first[:args].first
       ActiveJob::Base.execute(enqueued_jobs.shift)
       retry_job = enqueued_jobs.shift
+      assert_equal ciphertext, retry_job[:args].first
+      refute_includes JSON.generate(retry_job.stringify_keys), @user.email_address
       travel_to Time.at(retry_job[:at]) do
         ActiveJob::Base.execute(retry_job)
       end
@@ -172,12 +175,61 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
     original_logger = PasswordResetDeliveryJob.logger
     PasswordResetDeliveryJob.logger = ActiveSupport::Logger.new(output)
     PasswordsMailer.deliver_reset_later(@user)
-    token = enqueued_jobs.first[:args].first
+    encrypted_payload = enqueued_jobs.first[:args].first
+    token = PasswordResetDeliveryJob.encryptor.decrypt_and_verify(encrypted_payload, purpose: "PasswordResetDeliveryJob").fetch("token")
     refute_includes output.string, token
     refute_includes output.string, @user.email_address
     assert_includes output.string, "PasswordResetDeliveryJob"
   ensure
     PasswordResetDeliveryJob.logger = original_logger
+  end
+
+  test "persisted arguments encrypt the token recipient and email contents and restore for delivery" do
+    token = @user.password_reset_token
+    email = PasswordsMailer.reset(@user, token: token).message.encoded
+    encrypted_payload = PasswordResetDeliveryJob.encrypt_payload(token, email, Time.current + 15.minutes)
+    PasswordResetDeliveryJob.perform_later(encrypted_payload)
+    persisted = JSON.generate(enqueued_jobs.shift.stringify_keys)
+    [ token, @user.email_address, "You requested a password reset", "Reset your JobFlow password" ].each do |sensitive|
+      refute_includes persisted, sensitive
+    end
+    with_http_responses({ id: "accepted-message" }) do
+      ActiveJob::Base.execute(JSON.parse(persisted))
+      assert_equal 1, @requests.size
+      payload = JSON.parse(@requests.first.last[:body])
+      assert_includes payload.fetch("text"), token
+      assert_equal [ @user.email_address ], payload.fetch("to")
+    end
+  end
+
+  test "legacy plaintext jobs encrypt subsequent retries without changing the email" do
+    token = @user.password_reset_token
+    email = PasswordsMailer.reset(@user, token: token).message.encoded
+    with_http_responses(Net::ReadTimeout.new, { id: "accepted-message" }) do
+      PasswordResetDeliveryJob.perform_later(token, email, Time.current + 15.minutes)
+      ActiveJob::Base.execute(enqueued_jobs.shift)
+      retry_job = enqueued_jobs.shift
+      assert_equal 1, retry_job[:args].size
+      persisted = JSON.generate(retry_job.stringify_keys)
+      refute_includes persisted, token
+      refute_includes persisted, @user.email_address
+      ActiveJob::Base.execute(JSON.parse(persisted))
+      assert_equal @requests.first, @requests.last
+    end
+  end
+
+  test "tampered ciphertext fails safely without delivering or retrying" do
+    with_http_responses do
+      PasswordResetDeliveryJob.perform_later("private-token invalid-ciphertext")
+      error = assert_raises(ActiveSupport::MessageEncryptor::InvalidMessage) do
+        ActiveJob::Base.execute(enqueued_jobs.shift)
+      end
+      assert_equal "Unable to decrypt password reset email", error.message
+      assert_nil error.cause
+      refute_includes error.full_message, "private-token"
+      assert_empty @requests
+      assert_empty enqueued_jobs
+    end
   end
 
   private

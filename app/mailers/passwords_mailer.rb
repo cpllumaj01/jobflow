@@ -4,7 +4,8 @@ class PasswordsMailer < ApplicationMailer
 
     token = user.password_reset_token
     expires_at = Time.current + user.password_reset_token_expires_in
-    PasswordResetDeliveryJob.perform_later(token, reset(user, token: token).message.encoded, expires_at)
+    payload = PasswordResetDeliveryJob.encrypt_payload(token, reset(user, token: token).message.encoded, expires_at)
+    PasswordResetDeliveryJob.perform_later(payload)
   end
 
   def reset(user, token: user.password_reset_token)
