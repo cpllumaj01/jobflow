@@ -1,6 +1,14 @@
 class PasswordsMailer < ApplicationMailer
-  def reset(user)
+  def self.deliver_reset_later(user)
+    token = user.password_reset_token
+    expires_at = Time.current + user.password_reset_token_expires_in
+    payload = PasswordResetDeliveryJob.encrypt_payload(token, reset(user, token: token).message.encoded, expires_at)
+    PasswordResetDeliveryJob.perform_later(payload)
+  end
+
+  def reset(user, token: user.password_reset_token)
     @user = user
-    mail subject: "Reset your password", to: user.email_address
+    @token = token
+    mail subject: "Reset your JobFlow password", to: user.email_address
   end
 end
