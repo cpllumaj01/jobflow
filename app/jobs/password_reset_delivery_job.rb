@@ -21,9 +21,13 @@ class PasswordResetDeliveryJob < ApplicationJob
     return unless valid_payload_at?(Time.current)
 
     mail = Mail.new(payload.fetch("email"))
-    PasswordsMailer.wrap_delivery_behavior(mail)
-    # Keep the reconstructed email body out of Action Mailer's debug logs.
-    mail.delivery_handler = nil
+    delivery_method = PasswordsMailer.delivery_method
+    mail.delivery_method(
+      PasswordsMailer.delivery_methods.fetch(delivery_method),
+      PasswordsMailer.public_send("#{delivery_method}_settings") || {}
+    )
+    mail.perform_deliveries = PasswordsMailer.perform_deliveries
+    mail.raise_delivery_errors = PasswordsMailer.raise_delivery_errors
     mail.deliver
   end
 

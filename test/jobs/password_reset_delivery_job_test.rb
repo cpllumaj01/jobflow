@@ -5,6 +5,8 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
     @user = users(:one)
     @original_api_key = Resend.api_key
     @original_delivery_method = PasswordsMailer.delivery_method
+    @original_perform_deliveries = PasswordsMailer.perform_deliveries
+    @original_raise_delivery_errors = PasswordsMailer.raise_delivery_errors
     Resend.api_key = "test-only-key"
     PasswordsMailer.delivery_method = :resend
     @requests = []
@@ -13,6 +15,8 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
   teardown do
     Resend.api_key = @original_api_key
     PasswordsMailer.delivery_method = @original_delivery_method
+    PasswordsMailer.perform_deliveries = @original_perform_deliveries
+    PasswordsMailer.raise_delivery_errors = @original_raise_delivery_errors
   end
 
   test "configured test delivery captures restored encrypted mail without contacting Resend" do
@@ -49,6 +53,26 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
     end
   ensure
     PasswordsMailer.file_settings = original_settings
+  end
+
+  test "disabled delivery does not contact the configured provider" do
+    PasswordsMailer.perform_deliveries = false
+    with_http_responses do
+      PasswordsMailer.deliver_reset_later(@user)
+      ActiveJob::Base.execute(enqueued_jobs.shift)
+      assert_empty @requests
+      assert_empty enqueued_jobs
+    end
+  end
+
+  test "configured delivery error suppression is respected" do
+    PasswordsMailer.raise_delivery_errors = false
+    with_http_responses({ statusCode: 503, message: "private-response" }) do
+      PasswordsMailer.deliver_reset_later(@user)
+      ActiveJob::Base.execute(enqueued_jobs.shift)
+      assert_equal 1, @requests.size
+      assert_empty enqueued_jobs
+    end
   end
 
   test "rate limits respect retry after and use a bounded schedule" do
@@ -206,18 +230,63 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
     end
   end
 
-  test "queued token and mail content are omitted from job logs" do
+  test "enqueue and delivery failure logs omit tokens email contents and credentials" do
     output = StringIO.new
-    original_logger = PasswordResetDeliveryJob.logger
-    PasswordResetDeliveryJob.logger = ActiveSupport::Logger.new(output)
+    logger = ActiveSupport::Logger.new(output)
+    logger.level = Logger::DEBUG
+    original_job_logger = PasswordResetDeliveryJob.logger
+    original_mailer_logger = PasswordsMailer.logger
+    original_base_mailer_logger = ActionMailer::Base.logger
+    PasswordResetDeliveryJob.logger = logger
+    ActionMailer::Base.logger = logger
+    PasswordsMailer.logger = logger
+
     PasswordsMailer.deliver_reset_later(@user)
     encrypted_payload = enqueued_jobs.first[:args].first
-    token = PasswordResetDeliveryJob.encryptor.decrypt_and_verify(encrypted_payload, purpose: "PasswordResetDeliveryJob").fetch("token")
-    refute_includes output.string, token
-    refute_includes output.string, @user.email_address
+    snapshot = PasswordResetDeliveryJob.encryptor.decrypt_and_verify(encrypted_payload, purpose: "PasswordResetDeliveryJob")
+    sensitive_values = [ snapshot.fetch("token"), @user.email_address, "You requested a password reset", "test-only-key" ]
+    with_http_responses({ statusCode: 401, message: sensitive_values.join(" ") }) do
+      error = assert_raises(Resend::Error) { ActiveJob::Base.execute(enqueued_jobs.shift) }
+      sensitive_values.each do |sensitive|
+        refute_includes output.string, sensitive
+        refute_includes error.full_message, sensitive
+      end
+      assert_nil error.cause
+    end
     assert_includes output.string, "PasswordResetDeliveryJob"
+    assert_includes output.string, "processed outbound mail"
   ensure
-    PasswordResetDeliveryJob.logger = original_logger
+    PasswordResetDeliveryJob.logger = original_job_logger
+    ActionMailer::Base.logger = original_base_mailer_logger
+    PasswordsMailer.logger = original_mailer_logger
+  end
+
+  test "successful delivery logs omit the email body" do
+    output = StringIO.new
+    logger = ActiveSupport::Logger.new(output)
+    logger.level = Logger::DEBUG
+    original_job_logger = PasswordResetDeliveryJob.logger
+    original_mailer_logger = PasswordsMailer.logger
+    original_base_mailer_logger = ActionMailer::Base.logger
+    PasswordResetDeliveryJob.logger = logger
+    ActionMailer::Base.logger = logger
+    PasswordsMailer.logger = logger
+
+    with_http_responses({ id: "accepted-message" }) do
+      PasswordsMailer.deliver_reset_later(@user)
+      encrypted_payload = enqueued_jobs.first[:args].first
+      snapshot = PasswordResetDeliveryJob.encryptor.decrypt_and_verify(encrypted_payload, purpose: "PasswordResetDeliveryJob")
+      ActiveJob::Base.execute(enqueued_jobs.shift)
+      [ snapshot.fetch("token"), @user.email_address, "You requested a password reset", "test-only-key" ].each do |sensitive|
+        refute_includes output.string, sensitive
+      end
+      assert_equal 1, @requests.size
+      assert_includes output.string, "processed outbound mail"
+    end
+  ensure
+    PasswordResetDeliveryJob.logger = original_job_logger
+    ActionMailer::Base.logger = original_base_mailer_logger
+    PasswordsMailer.logger = original_mailer_logger
   end
 
   test "persisted arguments encrypt the token recipient and email contents and restore for delivery" do
