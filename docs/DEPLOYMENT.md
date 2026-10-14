@@ -74,6 +74,7 @@ Deploy the code and prepare the production database normally first. Normal produ
    ```
 
    `DEMO_PASSWORD` must already be available in the container environment. Keep the opt-in on this one command rather than setting it permanently. Do not use a local `railway run`, a build step, or a deployment pre-command: the scope attachment must be written onto the same persistent disk used by the web process.
+
 4. Sign in as `demo@jobflow.test` with the supplied password. Check the dashboard, kitchen contract value ($25,960), and download `kitchen-renovation-scope.txt`. Remove the temporary `DEMO_PASSWORD` variable after use if desired; the account retains only its password digest. Supply it again on the next refresh.
 
 The shared loader creates four fictional customers, six jobs covering every job status, six estimates, four kitchen change orders covering every change-order status, and one text attachment. Reruns replace this same account's dataset rather than adding duplicates. Record IDs change, and dates remain relative to the day of the refresh, as with local seeds. The account itself is retained.
@@ -88,29 +89,35 @@ Production enforces HTTPS and secure cookies, with HTTP `/up` exempted from redi
 
 ### Production email on Railway (issue #27)
 
-Password reset keeps Rails' 15-minute tokens. All environments render once when requested and enqueue a `PasswordResetDeliveryJob` with an encrypted snapshot of the original token, expiry, and encoded email. The job configures the reconstructed message through Mail's public API using the mailer's registered delivery method, settings, `perform_deliveries`, and `raise_delivery_errors`. Production uses Resend and Solid Queue; test delivery is captured in memory. Development retains its existing SMTP settings and error policy. Action Mailer uses the official `resend` Ruby SDK's HTTPS delivery integration. A small subclass adds the message-ID idempotency option, classifies server failures through the SDK public request error handler, and replaces provider error text with a safe error before Rails logs it; the SDK owns HTTP requests and mail serialization. The SDK adds `httparty`, `csv`, and `multi_xml` as new transitive dependencies. HTTPS works on all Railway plans, while [Railway limits SMTP to Pro and above](https://docs.railway.com/networking/outbound-networking). See the [Resend API reference](https://resend.com/docs/api-reference/emails/send-email).
+Password reset keeps Rails' 15-minute tokens. All environments render once when requested and enqueue a `PasswordResetDeliveryJob` with an encrypted snapshot of the original token, expiry, and encoded email. The job configures the reconstructed message through Mail's public API using the mailer's registered delivery method, settings, `perform_deliveries`, and `raise_delivery_errors`. Production uses Resend and Solid Queue; test delivery is captured in memory. Development retains its existing SMTP settings and error policy.
 
-Set these Railway service Variables on **both web and worker services**:
+Action Mailer uses the official `resend` Ruby SDK's HTTPS delivery integration. A small subclass adds the message-ID idempotency option, classifies server failures through the SDK public request error handler, and replaces provider error text with a safe error before Rails logs it; the SDK owns HTTP requests and mail serialization. Bundler installs the SDK's transitive dependencies automatically; no separate `httparty` declaration is needed in the Gemfile.
+
+HTTPS works on all Railway plans, while [Railway limits SMTP to Pro and above](https://docs.railway.com/networking/outbound-networking). See the [Resend API reference](https://resend.com/docs/api-reference/emails/send-email).
+
+Set these variables on the Railway **web service** and, if you run a **separate worker service**, configure the same production secrets and email variables on that worker as well:
 
 | Variable | Value |
 | --- | --- |
 | `APP_HOST` | Public application hostname only, without `https://`, port, or path. Use the current Railway public hostname now. All mail links use HTTPS. |
 | `MAILER_FROM` | A verified sender, for example `JobFlow <passwords@your-sending-domain>` (replace with an address on your own verified domain). |
 | `RESEND_API_KEY` | Secret Resend API key with Sending access for the sending domain. |
-| `SOLID_QUEUE_IN_PUMA=true` | For the existing single-service worker option; alternatively run a separate Railway worker with `bin/jobs`. Keep the existing queue database configuration. |
+| `SOLID_QUEUE_IN_PUMA=true` | Set on the web service only when running Solid Queue inside Puma (single-service deployment). Otherwise, omit it on the web service and run a separate Railway worker with `bin/jobs`. Keep the existing queue database configuration. |
 
-Set `APP_HOST`, `MAILER_FROM`, and `RESEND_API_KEY` **before deploying this release**, including before merging if Railway automatically deploys merges. Production boot (including `db:prepare`) rejects missing email variables and malformed `APP_HOST` values. Docker asset precompilation skips those checks with the existing build-only `SECRET_KEY_BASE_DUMMY`; never set that variable at runtime. Development and test delivery settings stay unchanged; tests use the in-memory delivery adapter and fake HTTP responses.
+Set `APP_HOST`, `MAILER_FROM`, and `RESEND_API_KEY` **before deploying this release**, including before merging if Railway automatically deploys merges. Production boot (including `db:prepare`) rejects missing email variables and malformed `APP_HOST` values. Docker asset precompilation skips those checks with the existing build-only `SECRET_KEY_BASE_DUMMY`; never set that variable at runtime.
 
-Activation:
+Development and test delivery settings stay unchanged; tests use the in-memory delivery adapter and fake HTTP responses.
+
+**Activation:**
 
 1. Create a Resend account and add a sending domain or subdomain you control. Follow [Resend domain verification](https://resend.com/docs/dashboard/domains/introduction): install the supplied SPF/DKIM DNS records and wait for verification. You cannot verify a Railway-owned `up.railway.app` domain as your sending domain. Resend's testing sender is restricted and is not a production substitute.
 2. Create a domain-scoped Sending API key and enter it directly in Railway Variables. Never put it in Git, screenshots, shell history, or logs. Choose a sender on the verified domain and set the variables above.
-3. Ensure Solid Queue's database is prepared and a worker is running. A separate worker needs the same release, Rails secrets, database connections, and email variables as the web service. Redeploy web and workers together.
+3. Ensure Solid Queue's database is prepared and a worker is running. For a single-service setup, enable `SOLID_QUEUE_IN_PUMA=true` on the web service. For a separate worker, run `bin/jobs` with the same release, Rails secrets, database connections, and email variables as the web service. Redeploy both services together when using a separate worker.
 4. Keep production logging at the default `info` level. The production formatter redacts tokens in reset URL paths, including redirects; parameter filtering already covers `token` and passwords. Configure any proxy, request tracing, or external log collector to redact `/passwords/:token` as well. Avoid debug HTTP logging and printing mail bodies or provider credentials.
 
 The sending domain and application host are independent. Issue #28 can later update `APP_HOST` after custom-domain DNS/TLS is ready; this issue does not change app domains or DNS. Existing tokens contain no host, and no Railway-generated URL is hardcoded in configuration.
 
-End-to-end verification after deployment:
+**End-to-end verification after deployment:**
 
 1. Use an account with an inbox you control (the demo `.test` address cannot receive mail). Request a reset through the application's Forgot password form.
 2. Confirm the generic confirmation response, then check the worker for completion or delivery errors and the Resend dashboard for delivery/bounce status. Temporary failures retry automatically as described below. Permanent and exhausted failures surface as failed Solid Queue executions with sanitized diagnostics. Resolve configuration/provider problems before manually retrying; expired tokens will be skipped.
@@ -120,21 +127,47 @@ End-to-end verification after deployment:
 
 ### Automatic delivery retries
 
-`PasswordResetDeliveryJob` uses Active Job `retry_on`; Solid Queue schedules the retries without blocking a worker. There are **four total attempts**, sharing one budget across rate limits, server errors, and transient network failures. The three ordinary delays are 15–17.25, 30–34.5, and 60–69 seconds (exponential backoff with up to 15% jitter). A numeric Resend `retry_after` raises the delay when needed, up to a maximum of 120 seconds per retry. Values above 120 seconds surface as failures rather than retrying earlier than the provider requested.
+`PasswordResetDeliveryJob` uses Active Job `retry_on`; Solid Queue schedules the retries without blocking a worker. There are **four total attempts**, sharing one budget across rate limits, server errors, and transient network failures.
 
-Retryable failures are HTTP 429, HTTP 5xx, timeouts, DNS/socket failures, EOF, and temporary connection reset/refused/aborted/unreachable/broken-pipe errors. HTTP 400/401/403/422 and unknown provider errors fail immediately. SDK 1.17 maps both HTTP 409 variants to the same generic exception and does not expose their error names, so neither concurrency conflicts nor payload conflicts retry. Its `ServerError` hierarchy also includes permanent 400/401/422 errors: the job deliberately does not retry that broad superclass. A scoped subclass of the SDK's public request error handler maps only numeric 5xx statuses to `InternalServerError`; there is no private SDK metadata inspection or global SDK patch.
+The three ordinary delays are 15–17.25, 30–34.5, and 60–69 seconds (exponential backoff with up to 15% jitter). A numeric Resend `retry_after` raises the delay when needed, up to a maximum of 120 seconds per retry. Values above 120 seconds surface as failures rather than retrying earlier than the provider requested.
 
-Each reset request renders a fresh email once, including a distinct message ID. Before enqueueing, Rails `ActiveSupport::MessageEncryptor` encrypts and authenticates that exact email, token, and original expiry using AES-256-GCM, JSON serialization, a job-specific purpose, and the original expiration. Active Job persists only the ciphertext as the job argument in the existing queue database. Retries reconstruct it, preserving both the API payload and the idempotency key even if Resend accepted an earlier attempt before a timeout. Separate requests have different keys, even when requested within the same second. The official SDK still owns HTTP transport and payload serialization; it uses its default HTTP timeouts. No new tables or dependencies are needed.
+Retryable failures are HTTP 429, HTTP 5xx, and transient network errors (including timeouts and connection failures). HTTP 400/401/403/409/422 and unknown provider errors are not retried automatically. The Resend adapter classifies numeric 5xx responses without retrying the SDK's broader error hierarchy, which also includes permanent failures.
 
-Before every attempt and retry enqueue, the job checks the original token with Rails' existing token validation. Password changes and deleted users invalidate the queued token. Initial queue time and retry time count against the unchanged 15-minute expiration. Delivery is skipped when less than one minute remains, and a retry is not scheduled if it would cross that safety margin. Queue congestion can therefore drop an obsolete email rather than send an expired link; request a fresh reset after resolving a worker backlog. Provider-side delays after acceptance cannot be controlled by the application.
+Each reset request renders a fresh email once, including a distinct message ID. Before enqueueing, Rails `ActiveSupport::MessageEncryptor` encrypts and authenticates that exact email, token, and original expiry using AES-256-GCM, JSON serialization, a job-specific purpose, and the original expiration.
 
-The wrapper preserves sanitized exception classes and numeric rate-limit metadata while omitting raw provider bodies, other headers, and original exception causes. Job argument logging remains disabled in addition to encrypting the persisted snapshot. The reconstructed `Mail::Message` has no Action Mailer delivery handler, so sending it does not emit Action Mailer's debug log containing the full email. No internal Rails delivery wrapper or explicit handler clearing is used. Tests check both successful delivery and sanitized failure logs at debug level; external instrumentation, provider logs, and custom interceptors must be reviewed separately. Decryption failures surface with a generic message and no original exception cause; expired encrypted payloads are skipped. Keep queue database access and backups restricted like other application data; do not dump job arguments into logs or tickets. Existing production URL token redaction remains enabled. No actual production email has been sent or received during repository validation; activation and the end-to-end inbox check remain required.
+Active Job persists only the ciphertext as the job argument in the existing queue database. Retries reconstruct it, preserving both the API payload and the idempotency key even if Resend accepted an earlier attempt before a timeout. Separate requests have different keys, even when requested within the same second.
+
+The official SDK still owns HTTP transport and payload serialization; it uses its default HTTP timeouts. This retry/encryption design needs no new database tables or gems beyond the Resend integration and its dependencies.
+
+Before every attempt and retry enqueue, the job checks the original token with Rails' existing token validation. Password changes and deleted users invalidate the queued token. Initial queue time and retry time count against the unchanged 15-minute expiration.
+
+Delivery is skipped when less than one minute remains, and a retry is not scheduled if it would cross that safety margin. Queue congestion can therefore drop an obsolete email rather than send an expired link; request a fresh reset after resolving a worker backlog. Provider-side delays after acceptance cannot be controlled by the application.
+
+The wrapper preserves sanitized exception classes and numeric rate-limit metadata while omitting raw provider bodies, other headers, and original exception causes.
+
+Job argument logging remains disabled in addition to encrypting the persisted snapshot. The reconstructed `Mail::Message` has no Action Mailer delivery handler, so sending it does not emit Action Mailer's debug log containing the full email. No internal Rails delivery wrapper or explicit handler clearing is used.
+
+Tests check both successful delivery and sanitized failure logs at debug level; external instrumentation, provider logs, and custom interceptors must be reviewed separately.
+
+Decryption failures surface with a generic message and no original exception cause; expired encrypted payloads are skipped.
+
+Keep queue database access and backups restricted like other application data; do not dump job arguments into logs or tickets. Existing production URL token redaction remains enabled.
+
+No actual production email has been sent or received during repository validation; activation and the end-to-end inbox check remain required.
 
 ### Queue encryption
 
 Solid Queue's job `arguments` column uses ordinary JSON serialization, not encryption. Encrypting the password-reset snapshot before enqueueing protects the token and complete email contents in queued, retried, and retained failed job records without modifying Solid Queue's models or adding encryption credentials. Failed executions store sanitized exception class, message, and backtrace separately.
 
-The encryption key is derived by Rails' key generator from the **existing `secret_key_base`**, using a separate salt for password-reset delivery. **No new environment variable, key, migration, or dependency is required.** Web and worker processes must use the same stable `SECRET_KEY_BASE`, or matching Rails credentials supplying it (and the corresponding `RAILS_MASTER_KEY`). This is already necessary for Rails' signed reset tokens. Do not use `SECRET_KEY_BASE_DUMMY` at runtime. Encryption is invoked when enqueueing/performing resets, so there is no additional production boot requirement. Secret rotation makes existing encrypted jobs unreadable and also invalidates the existing reset tokens; request new resets rather than manually retrying those jobs.
+The encryption key is derived by Rails' key generator from the **existing `secret_key_base`**, using a separate salt for password-reset delivery.
+
+**Encryption requires no additional environment variable, secret key, migration, or gem.**
+
+Web and worker processes must use the same stable `SECRET_KEY_BASE`, or matching Rails credentials supplying it (and the corresponding `RAILS_MASTER_KEY`). This is already necessary for Rails' signed reset tokens.
+
+Do not use `SECRET_KEY_BASE_DUMMY` at runtime. Encryption is invoked when enqueueing/performing resets, so there is no additional production boot requirement.
+
+Secret rotation makes existing encrypted jobs unreadable and also invalidates the existing reset tokens; request new resets rather than manually retrying those jobs.
 
 Keep queue/database backups access-controlled and subject to normal retention. Encryption protects a queue-only database disclosure; it does not protect against compromise of a running application/worker or access to both ciphertext and Rails secrets. Job timing, class, and execution status remain visible metadata.
 
@@ -148,7 +181,9 @@ Build assets without production secrets:
 RAILS_ENV=production SECRET_KEY_BASE_DUMMY=1 BUNDLE_WITHOUT=development:test bin/rails assets:precompile
 ```
 
-Troubleshooting: Normal Rails development picks up Stimulus/controller changes after a browser refresh; asset precompilation and Rails restarts are not routine development steps. Only if you intentionally ran a local production `assets:precompile` and left `public/assets/.manifest.json` behind, run `bin/rails assets:clobber` and refresh the browser to recover from stale compiled assets. This is an exceptional recovery step, not part of the normal development workflow.
+Troubleshooting: Normal Rails development picks up Stimulus/controller changes after a browser refresh; asset precompilation and Rails restarts are not routine development steps.
+
+Only if you intentionally ran a local production `assets:precompile` and left `public/assets/.manifest.json` behind, run `bin/rails assets:clobber` and refresh the browser to recover from stale compiled assets. This is an exceptional recovery step, not part of the normal development workflow.
 
 When Docker is available:
 
@@ -158,17 +193,20 @@ docker build -t jobflow .
 
 Do not expose the application publicly before supplying database connections, runtime secrets, persistent storage, and TLS. Configure production mail delivery before relying on password-reset functionality.
 
-Local audit results:
+**Local audit results:**
 
 - Production asset build passed with development/test gem groups excluded.
 - An isolated temporary source copy without real encrypted credentials booted using disposable secrets and four uniquely named local PostgreSQL databases.
 - Fresh and repeated production `db:prepare` passed; primary tables contained no demo users. The explicit production seed guard rejected seeding.
 - Production eager loading, HTTP `/up` (200), HTTPS redirect, and HTTPS sign-in rendering (200) passed.
-- Full Rails suite passed. The local host lacks libvips; the Dockerfile installs it. No image variants are used by the current attachment UI.
+- The earlier deployment audit recorded a passing full Rails test suite. **Rerun `bin/rails test` and confirm CI after the final issue #27 refactor before merging**; the earlier result does not verify the latest changes.
+- The local host lacks libvips; the Dockerfile installs it. No image variants are used by the current attachment UI.
 - Docker image build/runtime verification remains outstanding: Docker Desktop WSL integration was unavailable. Repeat the image build, migrations, health, persistence, and mail checks on the chosen host.
 
 ## Repository hygiene
 
-The audit found no tracked plaintext credential keys, environment files, uploaded files, or database dumps. Tracked `config/credentials.yml.enc` is encrypted; `.kamal/secrets` contains a key-file reference, not a literal secret. Git and Docker ignore local environment files, keys (including environment-specific credential keys), uploads, logs, temporary files, root database exports, and `.aws/`.
+The audit found no tracked plaintext credential keys, environment files, uploaded files, or database dumps. Tracked `config/credentials.yml.enc` is encrypted; `.kamal/secrets` contains a key-file reference, not a literal secret.
+
+Git and Docker ignore local environment files, keys (including environment-specific credential keys), uploads, logs, temporary files, root database exports, and `.aws/`.
 
 This is a working-tree/configuration audit, not a complete Git-history secret scan. Keep any differently located exports or credentials out of both version control and Docker build contexts.
