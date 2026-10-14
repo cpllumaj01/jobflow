@@ -202,22 +202,6 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
     end
   end
 
-  test "legacy plaintext jobs encrypt subsequent retries without changing the email" do
-    token = @user.password_reset_token
-    email = PasswordsMailer.reset(@user, token: token).message.encoded
-    with_http_responses(Net::ReadTimeout.new, { id: "accepted-message" }) do
-      PasswordResetDeliveryJob.perform_later(token, email, Time.current + 15.minutes)
-      ActiveJob::Base.execute(enqueued_jobs.shift)
-      retry_job = enqueued_jobs.shift
-      assert_equal 1, retry_job[:args].size
-      persisted = JSON.generate(retry_job.stringify_keys)
-      refute_includes persisted, token
-      refute_includes persisted, @user.email_address
-      ActiveJob::Base.execute(JSON.parse(persisted))
-      assert_equal @requests.first, @requests.last
-    end
-  end
-
   test "tampered ciphertext fails safely without delivering or retrying" do
     with_http_responses do
       PasswordResetDeliveryJob.perform_later("private-token invalid-ciphertext")

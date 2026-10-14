@@ -17,11 +17,7 @@ class PasswordResetDeliveryJob < ApplicationJob
     )
   end
 
-  def perform(encrypted_payload, *legacy_arguments)
-    # Old queued jobs can finish, but any new retry must persist only ciphertext.
-    if legacy_arguments.any?
-      self.arguments = [ self.class.encrypt_payload(encrypted_payload, *legacy_arguments) ]
-    end
+  def perform(encrypted_payload)
     return unless valid_payload_at?(Time.current)
 
     mail = Mail.new(payload.fetch("email"))
