@@ -63,4 +63,37 @@ class ProductionEmailConfigurationTest < ActiveSupport::TestCase
     refute_includes output, "another-token"
     assert_includes output, "/passwords/[FILTERED]/edit"
   end
+
+  test "password token redaction preserves URL suffixes and log delimiters" do
+    formatter = PasswordResetLogFormatter.new
+    {
+      'Started PATCH "/passwords/private-token"' => 'Started PATCH "/passwords/[FILTERED]"',
+      'Started GET "/passwords/private-token/edit/details?return_to=/jobs#form"' => 'Started GET "/passwords/[FILTERED]/edit/details?return_to=/jobs#form"',
+      "Redirected to 'https://example.org/passwords/private-token?return_to=/jobs#form'" => "Redirected to 'https://example.org/passwords/[FILTERED]?return_to=/jobs#form'",
+      "/passwords/new-token/edit" => "/passwords/[FILTERED]/edit",
+      "/passwords/private-token#form" => "/passwords/[FILTERED]#form"
+    }.each do |message, expected|
+      output = formatter.call("INFO", Time.current, nil, message)
+      assert_includes output, expected
+      refute_includes output, "private-token"
+    end
+  end
+
+  test "password formatter preserves legitimate password routes" do
+    formatter = PasswordResetLogFormatter.new
+    [ "/passwords", "/passwords/new", "/passwords/new/",
+      "/passwords/new?return_to=/jobs#form", "https://example.org/passwords/new" ].each do |path|
+      message = "Started GET \"#{path}\""
+      output = formatter.call("INFO", Time.current, nil, message)
+      assert_includes output, message
+      refute_includes output, "[FILTERED]"
+    end
+  end
+
+  test "password formatter preserves unrelated log messages" do
+    message = 'Started GET "/jobs/42?status=new" Completed 200 OK'
+    time = Time.current
+    assert_equal Logger::Formatter.new.call("INFO", time, nil, message),
+      PasswordResetLogFormatter.new.call("INFO", time, nil, message)
+  end
 end
