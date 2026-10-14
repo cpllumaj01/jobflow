@@ -1,7 +1,5 @@
 class PasswordsMailer < ApplicationMailer
   def self.deliver_reset_later(user)
-    return reset(user).deliver_later unless delivery_method == :resend
-
     token = user.password_reset_token
     expires_at = Time.current + user.password_reset_token_expires_in
     payload = PasswordResetDeliveryJob.encrypt_payload(token, reset(user, token: token).message.encoded, expires_at)

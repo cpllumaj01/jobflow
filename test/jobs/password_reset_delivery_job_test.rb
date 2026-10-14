@@ -15,6 +15,42 @@ class PasswordResetDeliveryJobTest < ActiveJob::TestCase
     PasswordsMailer.delivery_method = @original_delivery_method
   end
 
+  test "configured test delivery captures restored encrypted mail without contacting Resend" do
+    PasswordsMailer.delivery_method = :test
+    Resend.api_key = nil
+    with_http_responses do
+      PasswordsMailer.deliver_reset_later(@user)
+      persisted = JSON.generate(enqueued_jobs.shift.stringify_keys)
+      refute_includes persisted, @user.email_address
+      assert_difference -> { ActionMailer::Base.deliveries.size }, 1 do
+        ActiveJob::Base.execute(JSON.parse(persisted))
+      end
+      mail = ActionMailer::Base.deliveries.last
+      assert_equal [ @user.email_address ], mail.to
+      assert_equal [ "from@example.com" ], mail.from
+      token = mail.text_part.body.decoded.match(%r{http://example.com/passwords/([^/]+)/edit})[1]
+      assert_equal @user, User.find_by_password_reset_token!(token)
+      assert_empty @requests
+    end
+  end
+
+  test "configured delivery settings are respected" do
+    original_settings = PasswordsMailer.file_settings
+    PasswordsMailer.delivery_method = :file
+    Dir.mktmpdir do |directory|
+      PasswordsMailer.file_settings = { location: directory }
+      with_http_responses do
+        PasswordsMailer.deliver_reset_later(@user)
+        ActiveJob::Base.execute(enqueued_jobs.shift)
+        email = File.read(File.join(directory, @user.email_address))
+        assert_includes email, "Reset your JobFlow password"
+        assert_empty @requests
+      end
+    end
+  ensure
+    PasswordsMailer.file_settings = original_settings
+  end
+
   test "rate limits respect retry after and use a bounded schedule" do
     travel_to Time.current.change(usec: 0) do
       with_http_responses({ statusCode: 429, message: "private-response", headers: { "retry-after" => "42" } }) do
