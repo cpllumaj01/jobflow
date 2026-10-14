@@ -99,7 +99,7 @@ Set these Railway service Variables on **both web and worker services**:
 | `RESEND_API_KEY` | Secret Resend API key with Sending access for the sending domain. |
 | `SOLID_QUEUE_IN_PUMA=true` | For the existing single-service worker option; alternatively run a separate Railway worker with `bin/jobs`. Keep the existing queue database configuration. |
 
-Set `APP_HOST`, `MAILER_FROM`, and `RESEND_API_KEY` **before deploying this release**, including before merging if Railway automatically deploys merges. Production boot (including `db:prepare`) rejects missing email variables and malformed `APP_HOST` values. Leave `RESEND_BASE_URL` unset; production rejects overrides of the official HTTPS endpoint. Docker asset precompilation skips those checks with the existing build-only `SECRET_KEY_BASE_DUMMY`; never set that variable at runtime. Development and test delivery settings stay unchanged; tests use the in-memory delivery adapter and fake HTTP responses.
+Set `APP_HOST`, `MAILER_FROM`, and `RESEND_API_KEY` **before deploying this release**, including before merging if Railway automatically deploys merges. Production boot (including `db:prepare`) rejects missing email variables and malformed `APP_HOST` values. Docker asset precompilation skips those checks with the existing build-only `SECRET_KEY_BASE_DUMMY`; never set that variable at runtime. Development and test delivery settings stay unchanged; tests use the in-memory delivery adapter and fake HTTP responses.
 
 Activation:
 

@@ -54,8 +54,6 @@ Rails.application.configure do
   config.active_job.queue_adapter = :solid_queue
   config.solid_queue.connects_to = { database: { writing: :queue } }
 
-  raise "RESEND_BASE_URL must use the official HTTPS endpoint" unless Resend::Request::BASE_URL == "https://api.resend.com/"
-
   config.action_mailer.delivery_method = :resend
   config.action_mailer.perform_deliveries = true
   config.action_mailer.raise_delivery_errors = true

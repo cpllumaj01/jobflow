@@ -17,7 +17,7 @@ class ProductionEmailConfigurationTest < ActiveSupport::TestCase
     SCRIPT
     output, error, status = Open3.capture3(
       { "RAILS_ENV" => "production", "APP_HOST" => "jobflow.example.org", "MAILER_FROM" => "JobFlow <reset@example.org>",
-        "RESEND_API_KEY" => "test-only-key", "SECRET_KEY_BASE" => "test-secret-" * 8, "SECRET_KEY_BASE_DUMMY" => nil, "RESEND_BASE_URL" => nil },
+        "RESEND_API_KEY" => "test-only-key", "SECRET_KEY_BASE" => "test-secret-" * 8, "SECRET_KEY_BASE_DUMMY" => nil },
       "bin/rails", "runner", script
     )
     assert status.success?, error
@@ -35,7 +35,7 @@ class ProductionEmailConfigurationTest < ActiveSupport::TestCase
     environment = {
       "RAILS_ENV" => "production", "APP_HOST" => "jobflow.example.org",
       "MAILER_FROM" => "JobFlow <reset@example.org>", "RESEND_API_KEY" => "test-only-key",
-      "SECRET_KEY_BASE" => "test-secret-" * 8, "SECRET_KEY_BASE_DUMMY" => nil, "RESEND_BASE_URL" => nil
+      "SECRET_KEY_BASE" => "test-secret-" * 8, "SECRET_KEY_BASE_DUMMY" => nil
     }
     %w[APP_HOST MAILER_FROM RESEND_API_KEY].each do |name|
       _output, error, status = Open3.capture3(environment.merge(name => ""), "bin/rails", "runner", "nil")
@@ -45,10 +45,6 @@ class ProductionEmailConfigurationTest < ActiveSupport::TestCase
     _output, error, status = Open3.capture3(environment.merge("APP_HOST" => "https://jobflow.example.org/reset"), "bin/rails", "runner", "nil")
     refute status.success?
     assert_includes error, "APP_HOST must be a hostname"
-
-    _output, error, status = Open3.capture3(environment.merge("RESEND_BASE_URL" => "http://api.resend.com/"), "bin/rails", "runner", "nil")
-    refute status.success?
-    assert_includes error, "RESEND_BASE_URL must use the official HTTPS endpoint"
 
     build_environment = environment.merge("APP_HOST" => nil, "MAILER_FROM" => nil, "RESEND_API_KEY" => nil, "SECRET_KEY_BASE_DUMMY" => "1")
     _output, error, status = Open3.capture3(build_environment, "bin/rails", "runner", "nil")
