@@ -147,6 +147,20 @@ When Stimulus is appropriate or explicitly requested:
 - Reuse existing conventions before creating a new application pattern.
 - If a new pattern would materially affect future architecture, stop and ask before introducing it.
 
+## Architecture and Implementation Discipline
+
+- For cross-cutting changes involving multiple subsystems (authentication, background jobs, external APIs, security, or deployment), inspect existing integrations and settle the architecture before extensive implementation.
+- Prefer documented Rails APIs and officially supported library integrations. Avoid private framework methods, monkey-patching, or custom infrastructure unless clearly necessary.
+- Choose the simplest implementation that satisfies the actual requirements. Do not add speculative safeguards, compatibility layers, configuration, or abstractions for hypothetical future scenarios.
+- Do not add backward compatibility for implementations that have never been deployed. Verify that a real compatibility requirement exists before introducing migration or legacy-handling code.
+- Prefer one consistent execution path across environments. Keep environment-specific behavior in configuration or adapters rather than duplicating application workflows.
+- Before using unfamiliar framework or gem APIs, verify that they exist and behave as expected in the versions installed by the project.
+- For security-sensitive changes, consider sensitive data in job arguments, URLs, logs, exceptions, and external requests. Protect actual exposure paths without introducing unnecessary infrastructure.
+- Test security boundaries and edge cases, including legitimate inputs that must remain unaffected by filtering or validation.
+- Prefer small, cohesive, reviewable changes. For inherently large tickets, implement and verify logical stages rather than accumulating one difficult-to-review diff. Never split work in a way that introduces an insecure intermediate deployment.
+- Before finishing, reconsider whether each new class, dependency, configuration option, conditional, and abstraction is necessary. Remove obsolete approaches and tests made redundant by refactoring.
+- In the final report, explain any significant custom architecture, departures from Rails conventions, and why simpler alternatives were insufficient.
+
 ## Review
 
 After a meaningful change:
