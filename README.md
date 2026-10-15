@@ -129,7 +129,7 @@ To load or refresh the demo data explicitly:
 bin/rails db:seed
 ```
 
-**Local development seed login:** `demo@jobflow.test` / `password` (the live demo uses the credentials listed above).
+**Local development seed login:** `demo@jobflow.test` / `passwordpassword` (the live demo uses the credentials listed above).
 
 Seeds create four customers, six jobs (kitchen renovation, bathroom remodel, office buildout, deck replacement, basement finishing, and garage conversion), six estimates, four kitchen change orders, and a kitchen scope attachment. Their varied statuses demonstrate dashboard metrics and approved-versus-pending pricing.
 

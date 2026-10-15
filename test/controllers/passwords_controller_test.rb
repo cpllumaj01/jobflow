@@ -1,7 +1,7 @@
 require "test_helper"
 
 class PasswordsControllerTest < ActionDispatch::IntegrationTest
-  setup { @user = User.take }
+  setup { @user = users(:one) }
 
   test "new" do
     get new_password_path
@@ -30,6 +30,20 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert_notice "reset instructions sent"
   end
 
+  test "malformed email addresses receive the generic response without sending mail" do
+    post passwords_path, params: { email_address: "missing-user@example.com" }
+    notice = flash[:notice]
+
+    [ [ @user.email_address ], { value: @user.email_address } ].each do |email_address|
+      assert_no_enqueued_jobs only: PasswordResetDeliveryJob do
+        post passwords_path, params: { email_address: email_address }
+      end
+
+      assert_redirected_to new_session_path
+      assert_equal notice, flash[:notice]
+    end
+  end
+
   test "edit" do
     get edit_password_path(@user.password_reset_token)
     assert_response :success
@@ -45,7 +59,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
 
   test "update" do
     assert_changes -> { @user.reload.password_digest } do
-      put password_path(@user.password_reset_token), params: { password: "new", password_confirmation: "new" }
+      put password_path(@user.password_reset_token), params: { password: "replacement-password", password_confirmation: "replacement-password" }
       assert_redirected_to new_session_path
     end
 
@@ -57,12 +71,156 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     token = @user.password_reset_token
 
     assert_no_changes -> { @user.reload.password_digest } do
-      put password_path(token), params: { password: "no", password_confirmation: "match" }
+      put password_path(token), params: { password: "replacement-password", password_confirmation: "different-password" }
       assert_redirected_to edit_password_path(token)
     end
 
     follow_redirect!
-    assert_notice "Passwords did not match"
+    assert_notice "Password confirmation doesn't match Password"
+  end
+
+  test "missing empty and malformed passwords leave the account and reset token unchanged" do
+    token = @user.password_reset_token
+    session = @user.sessions.create!
+    invalid_params = [
+      {},
+      { password: "", password_confirmation: "" },
+      { password: [ "replacement-password" ], password_confirmation: "replacement-password" },
+      { password: { value: "replacement-password" }, password_confirmation: "replacement-password" }
+    ]
+
+    invalid_params.each do |password_params|
+      assert_no_changes -> { @user.reload.password_digest } do
+        put password_path(token), params: password_params
+      end
+
+      assert_redirected_to edit_password_path(token)
+      assert_equal "Password can't be blank.", flash[:alert]
+      assert Session.exists?(session.id)
+      assert_equal @user, User.find_by_password_reset_token(token)
+
+      get edit_password_path(token)
+      assert_response :success
+    end
+  end
+
+  test "short and oversized passwords display validation errors without consuming the token" do
+    token = @user.password_reset_token
+    session = @user.sessions.create!
+
+    { "short-password" => "Password is too short", "a" * 73 => "Password is too long" }.each do |password, message|
+      assert_no_changes -> { @user.reload.password_digest } do
+        put password_path(token), params: { password: password, password_confirmation: password }
+      end
+
+      assert_redirected_to edit_password_path(token)
+      assert_includes flash[:alert], message
+      assert Session.exists?(session.id)
+      assert_equal @user, User.find_by_password_reset_token(token)
+    end
+  end
+
+  test "a successful reset rejects token reuse and invalidates previously issued tokens" do
+    token = @user.password_reset_token
+    other_token = travel(1.second) { @user.password_reset_token }
+
+    put password_path(token), params: { password: "replacement-password", password_confirmation: "replacement-password" }
+    assert_redirected_to new_session_path
+
+    [ token, other_token ].each do |used_token|
+      assert_nil User.find_by_password_reset_token(used_token)
+
+      assert_no_changes -> { @user.reload.password_digest } do
+        put password_path(used_token), params: { password: "another-password", password_confirmation: "another-password" }
+      end
+
+      assert_redirected_to new_password_path
+    end
+
+    assert @user.reload.authenticate("replacement-password")
+    assert_equal @user, User.find_by_password_reset_token(@user.password_reset_token)
+  end
+
+  test "resetting a password rejects old cookies from every signed in browser" do
+    first_browser = open_session
+    second_browser = open_session
+    other_browser = open_session
+
+    [ first_browser, second_browser ].each do |browser|
+      browser.post session_path, params: { email_address: @user.email_address, password: "password" }
+      browser.assert_redirected_to root_path
+    end
+    other_browser.post session_path, params: { email_address: users(:two).email_address, password: "password" }
+    other_cookie = other_browser.cookies[:session_id]
+
+    put password_path(@user.password_reset_token), params: { password: "replacement-password", password_confirmation: "replacement-password" }
+    assert_redirected_to new_session_path
+    assert_empty @user.sessions.reload
+
+    [ first_browser, second_browser ].each do |browser|
+      assert browser.cookies[:session_id]
+      browser.get root_path
+      browser.assert_redirected_to new_session_path
+    end
+
+    other_browser.get root_path
+    other_browser.assert_response :success
+    assert_equal other_cookie, other_browser.cookies[:session_id]
+    assert_equal 1, users(:two).sessions.count
+  end
+
+  test "resetting the signed in user's password clears their cookie and rotates the Rails session" do
+    post session_path, params: { email_address: @user.email_address, password: "password" }
+    get edit_password_path("invalid")
+    previous_session_id = request.session.id.public_id
+
+    put password_path(@user.password_reset_token), params: { password: "replacement-password", password_confirmation: "replacement-password" }
+
+    assert_redirected_to new_session_path
+    assert_empty cookies[:session_id]
+    assert_not_equal previous_session_id, request.session.id.public_id
+    assert_empty @user.sessions.reload
+
+    get root_path
+    assert_redirected_to new_session_path
+  end
+
+  test "resetting another account's password preserves the signed in user's session" do
+    post session_path, params: { email_address: users(:two).email_address, password: "password" }
+    get edit_password_path("invalid")
+    previous_session_id = request.session.id.public_id
+    previous_cookie = cookies[:session_id]
+
+    put password_path(@user.password_reset_token), params: { password: "replacement-password", password_confirmation: "replacement-password" }
+
+    assert_redirected_to new_session_path
+    assert_equal previous_cookie, cookies[:session_id]
+    assert_equal previous_session_id, request.session.id.public_id
+    assert_equal 1, users(:two).sessions.count
+
+    get root_path
+    assert_response :success
+  end
+
+  test "a password change between token lookup and reset prevents the reset from proceeding" do
+    token = @user.password_reset_token
+    original_lookup = User.method(:find_by_password_reset_token!)
+    lookups = 0
+
+    User.define_singleton_method(:find_by_password_reset_token!) do |submitted_token|
+      user = original_lookup.call(submitted_token)
+      lookups += 1
+      user.update!(password: "concurrent-password") if lookups == 1
+      user
+    end
+
+    put password_path(token), params: { password: "replacement-password", password_confirmation: "replacement-password" }
+
+    assert_redirected_to new_password_path
+    assert @user.reload.authenticate("concurrent-password")
+    assert_not @user.authenticate("replacement-password")
+  ensure
+    User.define_singleton_method(:find_by_password_reset_token!, original_lookup)
   end
 
   test "request delivers a usable reset link and resetting preserves sign in behavior" do
@@ -104,7 +262,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
       assert_redirected_to new_password_path
 
       assert_no_changes -> { @user.reload.password_digest } do
-        put password_path(token), params: { password: "replacement", password_confirmation: "replacement" }
+        put password_path(token), params: { password: "replacement-password", password_confirmation: "replacement-password" }
       end
 
       assert_redirected_to new_password_path
@@ -113,7 +271,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
 
   test "invalid tokens cannot update a password" do
     assert_no_changes -> { @user.reload.password_digest } do
-      put password_path("invalid"), params: { password: "replacement", password_confirmation: "replacement" }
+      put password_path("invalid"), params: { password: "replacement-password", password_confirmation: "replacement-password" }
     end
 
     assert_redirected_to new_password_path
@@ -124,13 +282,21 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
 
     notice = flash[:notice]
     location = response.location
+    status = response.status
+
+    follow_redirect!
+    existing_account_page = response.body
 
     assert_no_enqueued_jobs only: PasswordResetDeliveryJob do
       post passwords_path, params: { email_address: "missing-user@example.com" }
     end
 
     assert_equal location, response.location
+    assert_equal status, response.status
     assert_equal notice, flash[:notice]
+
+    follow_redirect!
+    assert_equal existing_account_page, response.body
   end
 
   private

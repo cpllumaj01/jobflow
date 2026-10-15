@@ -23,7 +23,8 @@
       </div>
       <div>
         <%= form.label :password, "Password", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.password_field :password, required: true, autocomplete: "new-password", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
+        <%= form.password_field :password, required: true, minlength: 15, autocomplete: "new-password", "aria-describedby": "password-requirements", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
+        <p id="password-requirements" class="mt-2 text-sm text-slate-600">Use at least 15 characters. Passphrases and spaces are welcome.</p>
       </div>
       <div>
         <%= form.label :password_confirmation, "Confirm password", class: "block text-sm font-medium text-slate-700" %>

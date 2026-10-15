@@ -90,7 +90,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a user without records sees zero metrics despite another user's work" do
-    user = User.create!(email_address: "new-owner@example.com", password: "password")
+    user = User.create!(email_address: "new-owner@example.com", password: "passwordpassword")
     sign_in_as user
 
     get root_url

@@ -11,8 +11,8 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
       post sign_up_url, params: {
         user: {
           email_address: "new@example.com",
-          password: "password",
-          password_confirmation: "password"
+          password: "passwordpassword",
+          password_confirmation: "passwordpassword"
         }
       }
   end
@@ -25,12 +25,28 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
       post sign_up_url, params: {
         user: {
           email_address: "new@example.com",
-          password: "password",
-          password_confirmation: "different"
+          password: "passwordpassword",
+          password_confirmation: "different-password"
         }
       }
     end
 
     assert_response :unprocessable_entity
+  end
+
+  test "create rejects a short password without creating an account or session" do
+    assert_no_difference [ "User.count", "Session.count" ] do
+      post sign_up_url, params: {
+        user: {
+          email_address: "new@example.com",
+          password: "short-password",
+          password_confirmation: "short-password"
+        }
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select "li", /Password is too short/
+    assert_nil cookies[:session_id]
   end
 end
