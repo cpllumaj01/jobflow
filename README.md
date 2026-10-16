@@ -1,6 +1,6 @@
 # JobFlow
 
-JobFlow is a Ruby on Rails application for managing residential contractor projects from customer intake through estimates, change orders, and completion.
+JobFlow is a Ruby on Rails application for managing contractor projects from customer intake through estimates, change orders, and completion.
 
 **Customer → Job → Estimate → Change Orders → Completion**
 
@@ -8,7 +8,7 @@ The job workspace brings project details, pricing, changes, and files together. 
 
 ## Live Demo
 
-**[Open the live JobFlow demo](https://jobflow-production-8c01.up.railway.app)**
+**[Open the live JobFlow demo](https://jobflow.cpllumaj.dev)**
 
 - **Email:** `demo@jobflow.test`
 - **Password:** `passwordpassword`
@@ -18,8 +18,10 @@ Sign in to explore fictional customers, jobs, estimates, change orders, and a sa
 ## Features
 
 - Session-based sign-in, registration, sign-out, and password reset.
-- Customer management and jobs with status, address, and description.
+- Customer management and jobs with status, address, description, and scheduling dates.
 - Estimates with quantity/unit-price line items and draft, sent, approved, and rejected statuses.
+- Estimate PDF downloads with project details, line items, and totals.
+- Add and remove estimate and change-order line items directly in forms.
 - Change orders with line items and draft, pending, approved, and rejected statuses.
 - Contract values calculated from approved estimates and approved change orders.
 - Dashboard counts for customers, jobs, active jobs, pending estimates, and pending changes, plus total current contract value.
@@ -34,12 +36,14 @@ Versions below come from `.ruby-version` and `Gemfile.lock`.
 | Layer | Technology |
 | --- | --- |
 | Runtime | Ruby 4.0.7; Bundler 2.6.2 |
-| Framework | Rails 8.1.3.1, Active Record, Puma |
-| Database | PostgreSQL (`pg` 1.6.3; server version is not pinned) |
+| Framework | Rails 8.1.4, Active Record, Puma |
+| Database | PostgreSQL (`pg` 1.7.0; server version is not pinned) |
 | Views and styling | ERB, Tailwind CSS 4.3.3 via `tailwindcss-rails` 4.6.0 |
 | Browser behavior | Turbo, Stimulus via `stimulus-rails` 1.3.4, import maps |
 | Files | Active Storage; local disk in development and test, persistent storage on Railway in production |
-| Testing | Minitest model and controller/integration tests |
+| PDF generation | Prawn and prawn-table |
+| Production email and jobs | Resend over HTTPS; Solid Queue |
+| Testing | Minitest; Capybara system tests with Selenium and Chrome |
 
 JavaScript is served through import maps; the current development workflow does not require a Node package installation.
 
@@ -67,7 +71,7 @@ Approved changes = sum of approved change-order totals
 Current contract value = original estimate value + approved changes
 ```
 
-The UI primarily uses server-rendered Rails forms. A small Stimulus controller debounces job searches by 300 ms, with Turbo updating the results. Dashboard and API queries preload pricing associations to avoid per-job queries.
+The UI primarily uses server-rendered Rails forms. Stimulus controllers debounce job searches by 300 ms and add/remove nested line items; Turbo updates search results. Dashboard and API queries preload pricing associations to avoid per-job queries.
 
 Job attachments use Active Storage. Attachment access is routed through owned Jobs, and the default Active Storage routes are disabled so file access follows the application's ownership rules.
 
@@ -193,11 +197,14 @@ With PostgreSQL running:
 
 ```sh
 bin/rails test
+bin/rails test:system
 ```
 
-The suite covers authentication, registration, password reset, ownership isolation, nested-resource access, pricing and lifecycle behavior, attachments, search/filtering, and API responses.
+System tests require Chrome and use headless mode by default. Set `TEST_HEADLESS=false` to run them in a visible browser.
 
-GitHub Actions CI is configured and passing, with Rails tests, system tests, RuboCop linting, and Ruby/gem/JavaScript security checks. The workflow runs on pull requests and pushes to `main`.
+The suite covers authentication, registration, password reset, ownership isolation, nested-resource access, pricing and lifecycle behavior, attachments, search/filtering, estimate PDFs, dynamic line-item forms, and API responses.
+
+GitHub Actions CI is configured with Rails tests, system tests, RuboCop linting, and Ruby/gem/JavaScript security checks. The workflow runs on pull requests and pushes to `main`.
 
 To run the API tests alone:
 
@@ -207,7 +214,7 @@ bin/rails test test/controllers/api/v1/jobs_controller_test.rb
 
 ## Production deployment
 
-JobFlow is publicly deployed on Railway with PostgreSQL and persistent storage for Active Storage attachments. The live demo account is ready to use with the credentials above.
+JobFlow is deployed on **Railway** at **[jobflow.cpllumaj.dev](https://jobflow.cpllumaj.dev)**, with a custom domain managed through **Cloudflare**, PostgreSQL, and persistent storage for Active Storage attachments. Production password-reset email uses Resend over HTTPS with Solid Queue. The live demo credentials are listed above.
 
 See [the production deployment checklist](docs/DEPLOYMENT.md) for database, secrets, persistent storage, TLS, mail delivery, build requirements, and the production demo refresh workflow. The generated Kamal deployment template remains separate from the current Railway deployment and requires hosting-specific configuration.
 

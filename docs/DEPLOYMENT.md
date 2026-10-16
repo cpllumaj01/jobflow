@@ -1,6 +1,6 @@
 # Production deployment checklist
 
-JobFlow is deployed on Railway. The generated Kamal template is separate from that deployment.
+JobFlow is deployed on Railway at **[https://jobflow.cpllumaj.dev](https://jobflow.cpllumaj.dev)**. The custom domain is managed through Cloudflare. The generated Kamal template is separate from that deployment.
 
 ## Existing tooling
 
@@ -59,7 +59,7 @@ For another host, choose either:
 1. A persistent disk mounted at `/rails/storage`, shared with workers that process attachments; suitable for a single-host deployment.
 2. An approved object-storage service, with the required adapter dependency and credentials configured in a subsequent ticket; suitable for ephemeral or multi-host deployments.
 
-Do not deploy the current Disk configuration onto an ephemeral filesystem. No cloud provider has been selected or added.
+Do not deploy the current Disk configuration onto an ephemeral filesystem. No object-storage provider is configured.
 
 ## Production demo data
 
@@ -85,9 +85,22 @@ Local verification uses Rails transactional fixtures and a temporary test Disk d
 
 ## HTTPS, domain, and email prerequisites
 
-Production enforces HTTPS and secure cookies, with HTTP `/up` exempted from redirects for health probes. Configure a TLS-terminating proxy and verify forwarded HTTPS headers. If the trusted proxy requires `config.assume_ssl`, enable it for that deployment. The Kamal TLS proxy block is still commented out. Configure the real domain and an appropriate `config.hosts` allowlist before public exposure; host restrictions are currently unset.
+Production enforces HTTPS and secure cookies, with HTTP `/up` exempted from redirects for health probes. Configure a TLS-terminating proxy and verify forwarded HTTPS headers. If the trusted proxy requires `config.assume_ssl`, enable it for that deployment. The Kamal TLS proxy block is still commented out. The public domain is `jobflow.cpllumaj.dev`; host restrictions (`config.hosts`) are currently unset in the repository.
 
-### Production email on Railway (issue #27)
+### Custom domain
+
+The production application uses `https://jobflow.cpllumaj.dev`; Cloudflare manages its DNS and Railway hosts the application.
+
+When configuring or recreating the domain, refer to [Railway’s domain guide](https://docs.railway.com/networking/domains/working-with-domains) and [Cloudflare’s DNS record guide](https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/):
+
+1. Add `jobflow.cpllumaj.dev` as a custom domain on the Railway web service.
+2. In Cloudflare, configure the DNS records Railway supplies for that domain, including any verification records. Use the values shown for the deployed service rather than copying an old Railway-generated URL.
+3. Confirm Railway reports the domain and TLS certificate as ready, then verify HTTPS sign-in and `/up` at `https://jobflow.cpllumaj.dev`.
+4. Set `APP_HOST=jobflow.cpllumaj.dev` on the web service and any separate worker, then redeploy those services and verify password-reset links use the custom domain.
+
+`APP_HOST` controls generated mail links; setting it does not configure DNS, Railway routing, or TLS. Do not include a scheme, port, or path in its value. The repository does not specify Cloudflare proxy or SSL settings; verify those against the deployed domain configuration when making DNS changes.
+
+### Production email on Railway
 
 Password reset keeps Rails' 15-minute tokens. All environments render once when requested and enqueue a `PasswordResetDeliveryJob` with an encrypted snapshot of the original token, expiry, and encoded email. The job configures the reconstructed message through Mail's public API using the mailer's registered delivery method, settings, `perform_deliveries`, and `raise_delivery_errors`. Production uses Resend and Solid Queue; test delivery is captured in memory. Development retains its existing SMTP settings and error policy.
 
@@ -99,12 +112,12 @@ Set these variables on the Railway **web service** and, if you run a **separate 
 
 | Variable | Value |
 | --- | --- |
-| `APP_HOST` | Public application hostname only, without `https://`, port, or path. Use the current Railway public hostname now. All mail links use HTTPS. |
+| `APP_HOST` | `jobflow.cpllumaj.dev` — hostname only, without `https://`, port, or path. All mail links use HTTPS. |
 | `MAILER_FROM` | A verified sender, for example `JobFlow <passwords@your-sending-domain>` (replace with an address on your own verified domain). |
 | `RESEND_API_KEY` | Secret Resend API key with Sending access for the sending domain. |
 | `SOLID_QUEUE_IN_PUMA=true` | Set on the web service only when running Solid Queue inside Puma (single-service deployment). Otherwise, omit it on the web service and run a separate Railway worker with `bin/jobs`. Keep the existing queue database configuration. |
 
-Set `APP_HOST`, `MAILER_FROM`, and `RESEND_API_KEY` **before deploying this release**, including before merging if Railway automatically deploys merges. Production boot (including `db:prepare`) rejects missing email variables and malformed `APP_HOST` values. Docker asset precompilation skips those checks with the existing build-only `SECRET_KEY_BASE_DUMMY`; never set that variable at runtime.
+Set `APP_HOST`, `MAILER_FROM`, and `RESEND_API_KEY` **before starting or redeploying production services**. Production boot (including `db:prepare`) rejects missing email variables and malformed `APP_HOST` values. Docker asset precompilation skips those checks with the existing build-only `SECRET_KEY_BASE_DUMMY`; never set that variable at runtime.
 
 Development and test delivery settings stay unchanged; tests use the in-memory delivery adapter and fake HTTP responses.
 
@@ -115,7 +128,7 @@ Development and test delivery settings stay unchanged; tests use the in-memory d
 3. Ensure Solid Queue's database is prepared and a worker is running. For a single-service setup, enable `SOLID_QUEUE_IN_PUMA=true` on the web service. For a separate worker, run `bin/jobs` with the same release, Rails secrets, database connections, and email variables as the web service. Redeploy both services together when using a separate worker.
 4. Keep production logging at the default `info` level. The production formatter redacts tokens in reset URL paths, including redirects; parameter filtering already covers `token` and passwords. Configure any proxy, request tracing, or external log collector to redact `/passwords/:token` as well. Avoid debug HTTP logging and printing mail bodies or provider credentials.
 
-The sending domain and application host are independent. Issue #28 can later update `APP_HOST` after custom-domain DNS/TLS is ready; this issue does not change app domains or DNS. Existing tokens contain no host, and no Railway-generated URL is hardcoded in configuration.
+The sending domain and application host are independent: `MAILER_FROM` must use a Resend-verified sending domain, while `APP_HOST` must be `jobflow.cpllumaj.dev`. Existing tokens contain no host, so updating `APP_HOST` changes links in newly rendered emails without changing token validation. No Railway-generated URL is hardcoded in application configuration.
 
 **End-to-end verification after deployment:**
 
@@ -193,13 +206,13 @@ docker build -t jobflow .
 
 Do not expose the application publicly before supplying database connections, runtime secrets, persistent storage, and TLS. Configure production mail delivery before relying on password-reset functionality.
 
-**Local audit results:**
+**Historical local audit results (not a current deployment verification):**
 
 - Production asset build passed with development/test gem groups excluded.
 - An isolated temporary source copy without real encrypted credentials booted using disposable secrets and four uniquely named local PostgreSQL databases.
 - Fresh and repeated production `db:prepare` passed; primary tables contained no demo users. The explicit production seed guard rejected seeding.
 - Production eager loading, HTTP `/up` (200), HTTPS redirect, and HTTPS sign-in rendering (200) passed.
-- The earlier deployment audit recorded a passing full Rails test suite. **Rerun `bin/rails test` and confirm CI after the final issue #27 refactor before merging**; the earlier result does not verify the latest changes.
+- The earlier deployment audit recorded a passing full Rails test suite. Rerun `bin/rails test`, `bin/rails test:system`, and confirm CI for the release being deployed; the earlier result does not verify subsequent changes.
 - The local host lacks libvips; the Dockerfile installs it. No image variants are used by the current attachment UI.
 - Docker image build/runtime verification remains outstanding: Docker Desktop WSL integration was unavailable. Repeat the image build, migrations, health, persistence, and mail checks on the chosen host.
 
