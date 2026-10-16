@@ -104,8 +104,9 @@
       </h2>
     </div>
 
+    <% line_items_empty = @change_order.change_order_line_items.load.empty? %>
     <table class="w-full text-left text-sm">
-      <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <thead class="<%= "hidden" if line_items_empty %> border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
         <tr>
           <th class="px-6 py-3">Description</th>
           <th class="px-6 py-3 text-right">Quantity</th>
@@ -115,6 +116,20 @@
       </thead>
 
       <tbody class="divide-y divide-slate-100">
+        <% if line_items_empty %>
+          <tr>
+            <td colspan="4" class="px-6 py-8 text-center">
+              <p class="font-semibold text-slate-950">No line items yet</p>
+              <p class="mt-1 text-sm text-slate-500">
+                <% if @change_order.status == "approved" %>
+                  Mark the change order as pending or rejected before adding line items.
+                <% else %>
+                  Use Edit change order to add work, quantities, and prices.
+                <% end %>
+              </p>
+            </td>
+          </tr>
+        <% end %>
         <% @change_order.change_order_line_items.each do |line_item| %>
           <tr>
             <td class="px-6 py-4 font-medium text-slate-950">

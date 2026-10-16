@@ -572,8 +572,26 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "dd", "No expiration date"
     assert_select "dd", "No notes"
-    assert_select "tbody td[colspan='4']", "No line items yet."
+    assert_select "tbody td[colspan='4']" do
+      assert_select "p", text: "No line items yet"
+      assert_select "p", text: "Use Edit estimate to add work, quantities, and prices."
+    end
     assert_select "tfoot td", text: "$0.00"
-    assert_select "a[href=?]", edit_job_estimate_path(@job), text: "Edit estimate"
+    assert_select "a[href=?]", edit_job_estimate_path(@job), text: "Edit estimate", count: 1
+  end
+
+  test "approved estimate without line items explains how to unlock editing" do
+    @estimate.estimate_line_items.destroy_all
+    @estimate.update!(status: "approved")
+
+    get job_estimate_url(@job)
+
+    assert_response :success
+    assert_select "tbody td[colspan='4']" do
+      assert_select "p", text: "No line items yet"
+      assert_select "p", text: "Mark the estimate as sent or rejected before adding line items."
+    end
+    assert_select "a[href=?]", edit_job_estimate_path(@job), count: 0
+    assert_select "tfoot td", text: "$0.00"
   end
 end

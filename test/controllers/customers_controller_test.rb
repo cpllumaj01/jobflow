@@ -92,6 +92,18 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "body", text: /Kitchen Renovation/
+    assert_select "h3", text: "No jobs yet", count: 0
+  end
+
+  test "show guides a customer without jobs to the existing new job action" do
+    customer = @user.customers.create!(name: "New customer")
+
+    get customer_url(customer)
+
+    assert_response :success
+    assert_select "h3", "No jobs yet"
+    assert_select "p", "Create a job for this customer to track work, estimates, and change orders."
+    assert_select "a[href=?]", new_job_path(customer_id: customer.id), text: "New job", count: 1
   end
 
   test "show does not display another customer's jobs" do
