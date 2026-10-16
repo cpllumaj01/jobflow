@@ -86,6 +86,35 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", edit_job_change_order_path(@job, @change_order)
   end
 
+  test "show guides users to the existing edit action when there are no line items" do
+    @change_order.change_order_line_items.destroy_all
+
+    get job_change_order_url(@job, @change_order)
+
+    assert_response :success
+    assert_select "tbody td[colspan='4']" do
+      assert_select "p", text: "No line items yet"
+      assert_select "p", text: "Use Edit change order to add work, quantities, and prices."
+    end
+    assert_select "a[href=?]", edit_job_change_order_path(@job, @change_order), text: "Edit change order", count: 1
+    assert_select "tfoot td", text: "$0.00"
+  end
+
+  test "approved change order without line items explains how to unlock editing" do
+    @change_order.change_order_line_items.destroy_all
+    @change_order.update!(status: "approved")
+
+    get job_change_order_url(@job, @change_order)
+
+    assert_response :success
+    assert_select "tbody td[colspan='4']" do
+      assert_select "p", text: "No line items yet"
+      assert_select "p", text: "Mark the change order as pending or rejected before adding line items."
+    end
+    assert_select "a[href=?]", edit_job_change_order_path(@job, @change_order), count: 0
+    assert_select "tfoot td", text: "$0.00"
+  end
+
   test "every non-approved status allows edit and update" do
     %w[draft pending rejected].each do |status|
       @change_order.update!(status: status)

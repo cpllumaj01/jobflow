@@ -172,7 +172,7 @@
         <% end %>
       </ul>
     <% else %>
-      <p class="mt-4 text-sm text-slate-500">No attachments yet.</p>
+      <p class="mt-4 text-sm text-slate-500">No attachments yet. Upload plans, photos, or documents using the form below.</p>
     <% end %>
 
     <%= form_with scope: :job, url: job_attachments_path(@job), multipart: true,
@@ -220,7 +220,7 @@
       <% else %>
         <div class="mt-6">
           <p class="text-sm text-slate-500">
-            No estimate has been created for this job yet.
+            No estimate yet. Create one to outline the work and pricing for this job.
           </p>
 
           <%= link_to "Create estimate",
