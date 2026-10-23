@@ -18,6 +18,7 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_select "#total_jobs dd", "2"
     assert_select "a[href=?]", customers_path
     assert_select "a[href=?]", jobs_path
+    assert_select "h2", text: "Get started with JobFlow", count: 0
   end
 
   test "active jobs are approved or in progress only" do
@@ -100,6 +101,24 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
       assert_select "##{metric} dd", "0"
     end
     assert_select "#total_current_contract_value dd", "$0.00"
+    assert_select "h2", "Get started with JobFlow"
+    assert_select "p", "Open Customers below to add your first customer, then create a job to track your work."
+    assert_select "main a[href=?]", customers_path, count: 1
+    assert_select "a[href=?]", new_customer_path, count: 0
+  end
+
+  test "a user with customers and no jobs sees the next step" do
+    user = User.create!(email_address: "customer-owner@example.com", password: "passwordpassword")
+    user.customers.create!(name: "First customer")
+    sign_in_as user
+
+    get root_url
+
+    assert_response :success
+    assert_select "h2", "Get started with JobFlow"
+    assert_select "p", "Open Jobs below to create your first job and start tracking estimates and change orders."
+    assert_select "main a[href=?]", jobs_path, count: 1
+    assert_select "a[href=?]", new_job_path, count: 0
   end
 
   test "dashboard requires authentication" do

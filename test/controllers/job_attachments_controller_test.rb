@@ -16,6 +16,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
 
     get job_url(@job)
     assert_response :success
+    assert_select "p", text: /No attachments yet/, count: 0
     @job.files.each do |file|
       assert_select "a[href=?]", job_attachment_path(@job, file), text: "project.txt"
     end
@@ -23,9 +24,10 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
 
   test "empty job displays upload form and empty state" do
     get job_url(@job)
-    assert_select "p", text: "No attachments yet."
-    assert_select "form[action=?][enctype='multipart/form-data']", job_attachments_path(@job) do
+    assert_select "p", text: "No attachments yet. Upload plans, photos, or documents using the form below."
+    assert_select "form[action=?][enctype='multipart/form-data']", job_attachments_path(@job), count: 1 do
       assert_select "input[type='file'][multiple][name='job[files][]']"
+      assert_select "input[type='submit'][value='Upload files']", count: 1
     end
   end
 

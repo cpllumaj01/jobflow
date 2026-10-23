@@ -10,6 +10,19 @@
   </p>
 </div>
 
+<% if @total_jobs.zero? %>
+  <div class="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h2 class="font-semibold text-slate-950">Get started with JobFlow</h2>
+    <p class="mt-1 text-sm text-slate-500">
+      <% if @total_customers.zero? %>
+        Open Customers below to add your first customer, then create a job to track your work.
+      <% else %>
+        Open Jobs below to create your first job and start tracking estimates and change orders.
+      <% end %>
+    </p>
+  </div>
+<% end %>
+
 <dl class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
   <div id="total_customers" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
     <dt class="text-sm font-medium text-slate-500">Total customers</dt>
