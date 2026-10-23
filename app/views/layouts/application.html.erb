@@ -21,32 +21,32 @@
 
   <body class="min-h-screen bg-slate-50 text-slate-900">
     <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+      <div class="mx-auto flex max-w-7xl flex-col items-start gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <%= link_to root_path, class: "text-xl font-bold tracking-tight text-slate-900 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" do %>
           JobFlow
         <% end %>
 
         <% if Current.user %>
-          <nav class="flex items-center gap-6 text-sm font-medium">
+          <nav aria-label="Main navigation" class="flex w-full flex-wrap items-center justify-between gap-2 text-sm font-medium sm:w-auto sm:justify-start sm:gap-6">
             <%= link_to "Dashboard", root_path,
-                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
 
             <%= link_to "Customers", customers_path,
-                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
 
             <%= link_to "Jobs", jobs_path,
-                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
 
             <%= button_to "Log out",
                 session_path,
                 method: :delete,
-                class: "cursor-pointer text-slate-600 hover:text-slate-950 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
+                class: "cursor-pointer text-slate-600 hover:text-slate-950 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
           </nav>
         <% end %>
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-7xl px-6 py-10">
+    <main class="mx-auto w-full max-w-7xl wrap-anywhere px-4 py-6 sm:px-6 sm:py-10">
       <% if notice.present? %>
         <div class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <%= notice %>

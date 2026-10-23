@@ -1,8 +1,8 @@
 <% content_for :title, "Change orders" %>
 
 <div class="mx-auto max-w-5xl">
-  <div class="flex items-start justify-between gap-6">
-    <div>
+  <div class="flex flex-col items-start justify-between gap-6 sm:flex-row">
+    <div class="min-w-0">
       <%= link_to "← #{@job.name}",
           job_path(@job),
           class: "text-sm font-medium text-slate-500 hover:text-slate-900 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
@@ -19,57 +19,59 @@
 
     <%= link_to "New change order",
         new_job_change_order_path(@job),
-        class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+        class: "inline-block shrink-0 cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
   </div>
 
   <div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
     <% if @change_orders.any? %>
-      <table class="w-full text-left text-sm">
-        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          <tr>
-            <th class="px-6 py-3">Change order</th>
-            <th class="px-6 py-3">Status</th>
-            <th class="px-6 py-3 text-right">Amount</th>
-            <th class="px-6 py-3 text-right"></th>
-          </tr>
-        </thead>
-
-        <tbody class="divide-y divide-slate-100">
-          <% @change_orders.each do |change_order| %>
-            <tr class="hover:bg-slate-50">
-              <td class="px-6 py-4">
-              <div class="font-medium text-slate-950">
-                <%= link_to change_order.title,
-                    job_change_order_path(@job, change_order),
-                    class: "hover:text-slate-600 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
-              </div>
-
-                <% if change_order.description.present? %>
-                  <div class="mt-1 max-w-xl truncate text-sm text-slate-500">
-                    <%= change_order.description %>
-                  </div>
-                <% end %>
-              </td>
-
-              <td class="px-6 py-4">
-                <span class="<%= status_badge_classes(change_order.status) %>">
-                  <%= change_order.status.humanize %>
-                </span>
-              </td>
-
-              <td class="px-6 py-4 text-right font-medium text-slate-950">
-                <%= number_to_currency(change_order.total) %>
-              </td>
-
-              <td class="px-6 py-4 text-right">
-                <%= link_to "View",
-                    job_change_order_path(@job, change_order),
-                    class: "inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
-              </td>
+      <div class="overflow-x-auto" role="region" aria-label="Change orders" tabindex="0">
+        <table class="w-full min-w-160 text-left text-sm">
+          <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="min-w-48 px-6 py-3 whitespace-nowrap">Change order</th>
+              <th class="px-6 py-3 whitespace-nowrap">Status</th>
+              <th class="px-6 py-3 whitespace-nowrap text-right">Amount</th>
+              <th class="px-6 py-3 whitespace-nowrap text-right"></th>
             </tr>
-          <% end %>
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody class="divide-y divide-slate-100">
+            <% @change_orders.each do |change_order| %>
+              <tr class="hover:bg-slate-50">
+                <td class="px-6 py-4">
+                <div class="font-medium text-slate-950">
+                  <%= link_to change_order.title,
+                      job_change_order_path(@job, change_order),
+                      class: "hover:text-slate-600 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
+                </div>
+
+                  <% if change_order.description.present? %>
+                    <div class="mt-1 max-w-xl truncate text-sm text-slate-500">
+                      <%= change_order.description %>
+                    </div>
+                  <% end %>
+                </td>
+
+                <td class="px-6 py-4">
+                  <span class="<%= status_badge_classes(change_order.status) %>">
+                    <%= change_order.status.humanize %>
+                  </span>
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap text-right font-medium text-slate-950">
+                  <%= number_to_currency(change_order.total) %>
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                  <%= link_to "View",
+                      job_change_order_path(@job, change_order),
+                      class: "inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
     <% else %>
       <div class="px-6 py-12 text-center">
         <h2 class="font-semibold text-slate-950">
