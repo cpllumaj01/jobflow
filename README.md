@@ -202,6 +202,8 @@ bin/rails test:system
 
 System tests require Chrome and use headless mode by default. Set `TEST_HEADLESS=false` to run them in a visible browser.
 
+In CI, failed system tests are retried up to twice with `minitest-retry`; each attempt runs Rails setup and teardown, including fixture rollback and browser session cleanup. Unit and integration tests, skipped tests, and normal local runs are not retried. CI logs each failed attempt and reports tests that pass only after retrying. The `screenshots` artifact retains failure screenshots in separate process/class/attempt directories, even when a retry passes; `system-test-logs` retains the console output and Rails test log. A test that fails all three attempts still fails CI.
+
 The suite covers authentication, registration, password reset, ownership isolation, nested-resource access, pricing and lifecycle behavior, attachments, search/filtering, estimate PDFs, dynamic line-item forms, and API responses.
 
 GitHub Actions CI is configured with Rails tests, system tests, RuboCop linting, and Ruby/gem/JavaScript security checks. The workflow runs on pull requests and pushes to `main`.

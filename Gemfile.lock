@@ -178,6 +178,8 @@ GEM
     minitest (6.0.6)
       drb (~> 2.0)
       prism (~> 1.5)
+    minitest-retry (0.3.1)
+      minitest (>= 5.0)
     msgpack (1.8.5)
     multi_xml (0.9.1)
       bigdecimal (>= 3.1, < 5)
@@ -433,6 +435,7 @@ DEPENDENCIES
   jbuilder
   json (= 3.0.2)
   kamal
+  minitest-retry (~> 0.3.1)
   pdf-reader (~> 2.15)
   pg (~> 1.7)
   prawn (~> 2.5)
