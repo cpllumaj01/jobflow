@@ -147,7 +147,7 @@ jobs:
           bin/rails test:system 2>&1 | tee log/system-tests.log
 
       - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: screenshots
@@ -155,7 +155,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Keep system test logs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: system-test-logs
