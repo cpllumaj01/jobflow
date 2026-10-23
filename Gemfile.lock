@@ -148,7 +148,7 @@ GEM
     jbuilder (2.15.1)
       actionview (>= 7.0.0)
       activesupport (>= 7.0.0)
-    json (3.0.2)
+    json (3.1.0)
     kamal (2.12.0)
       activesupport (>= 7.0)
       base64 (~> 0.2)
@@ -433,7 +433,7 @@ DEPENDENCIES
   image_processing (~> 2.2)
   importmap-rails
   jbuilder
-  json (= 3.0.2)
+  json (= 3.1.0)
   kamal
   minitest-retry (~> 0.3.1)
   pdf-reader (~> 2.15)
