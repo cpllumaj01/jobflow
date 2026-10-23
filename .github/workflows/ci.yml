@@ -143,12 +143,23 @@ jobs:
           # REDIS_URL: redis://localhost:6379/0
         run: |
           bin/rails db:test:prepare
-          bin/rails test:system
+          set -o pipefail
+          bin/rails test:system 2>&1 | tee log/system-tests.log
 
       - name: Keep screenshots from failed system tests
         uses: actions/upload-artifact@v6
-        if: failure()
+        if: always()
         with:
           name: screenshots
           path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+      - name: Keep system test logs
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: system-test-logs
+          path: |
+            ${{ github.workspace }}/log/system-tests.log
+            ${{ github.workspace }}/log/test.log
           if-no-files-found: ignore
