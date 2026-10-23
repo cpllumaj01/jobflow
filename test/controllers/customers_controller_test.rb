@@ -16,6 +16,91 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_select "body", text: /Fairfield Construction LLC/, count: 0
   end
 
+  test "pagination orders customers by name and breaks ties by id across pages" do
+    @customer.update!(name: "Z customer")
+    added_customers = Array.new(50) { @user.customers.create!(name: "A customer") }
+
+    get customers_url
+    assert_select "tbody a" do |links|
+      assert_equal added_customers.first(25).map { |customer| customer_path(customer) }, links.map { |link| link["href"] }
+    end
+    assert_select "nav[aria-label='Pagination']" do
+      assert_select "p", text: /Showing 1–25 of 51\s+Page 1 of 3/
+      assert_select "span[aria-disabled='true']", text: "Previous"
+    end
+
+    get css_select("a[rel='next']").first["href"]
+    assert_select "tbody a" do |links|
+      assert_equal added_customers.last(25).map { |customer| customer_path(customer) }, links.map { |link| link["href"] }
+    end
+    assert_select "nav[aria-label='Pagination'] p", text: /Showing 26–50 of 51\s+Page 2 of 3/
+
+    get css_select("a[rel='next']").first["href"]
+    assert_select "tbody a", count: 1
+    assert_select "tbody a[href=?]", customer_path(@customer)
+    assert_select "nav[aria-label='Pagination']" do
+      assert_select "p", text: /Showing 51–51 of 51\s+Page 3 of 3/
+      assert_select "span[aria-disabled='true']", text: "Next"
+      assert_select "a[rel='next']", count: 0
+    end
+
+    get css_select("a[rel='prev']").first["href"]
+    assert_select "nav[aria-label='Pagination'] p", text: /Page 2 of 3/
+    assert_select "tbody a[href=?]", customer_path(customers(:fairfield)), count: 0
+  end
+
+  test "invalid pages use the first page and excessive pages use the last owned page" do
+    25.times { @user.customers.create!(name: "A customer") }
+
+    [ "invalid", "", "0", "-1", "1.5", "2oops", [ "2" ], { number: "2" } ].each do |page|
+      get customers_url, params: { page: page }
+
+      assert_response :success
+      assert_select "tbody tr", count: 25
+      assert_select "nav[aria-label='Pagination'] p", text: /Page 1 of 2/
+    end
+
+    get customers_url, params: { page: "9" * 100 }
+    assert_response :success
+    assert_select "tbody tr", count: 1
+    assert_select "tbody a[href=?]", customer_path(@customer)
+    assert_select "nav[aria-label='Pagination'] p", text: /Page 2 of 2/
+  end
+
+  test "single and empty pages have no pagination links" do
+    get customers_url
+    assert_select "nav[aria-label='Pagination'] p", text: /Showing 1–1 of 1\s+Page 1 of 1/
+    assert_select "nav[aria-label='Pagination'] a", count: 0
+
+    @customer.destroy!
+    get customers_url, params: { page: 999 }
+    assert_response :success
+    assert_select "h2", "No customers yet"
+    assert_select "nav[aria-label='Pagination']", count: 0
+  end
+
+  test "an exact full page does not offer an empty next page" do
+    24.times { @user.customers.create!(name: "A customer") }
+
+    get customers_url
+    assert_select "tbody tr", count: 25
+    assert_select "nav[aria-label='Pagination'] p", text: /Showing 1–25 of 25\s+Page 1 of 1/
+    assert_select "nav[aria-label='Pagination'] a", count: 0
+  end
+
+  test "pagination only instantiates one page of customers" do
+    30.times { @user.customers.create!(name: "A customer") }
+    instantiated = 0
+    subscriber = ->(event) { instantiated += event.payload[:record_count] if event.payload[:class_name] == "Customer" }
+
+    ActiveSupport::Notifications.subscribed(subscriber, "instantiation.active_record") do
+      get customers_url
+    end
+
+    assert_response :success
+    assert_equal 25, instantiated
+  end
+
   test "should get new" do
     get new_customer_url
 

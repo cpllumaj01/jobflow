@@ -1,0 +1,28 @@
+<% if @total_count.positive? %>
+  <nav aria-label="Pagination" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <p class="text-sm text-slate-600">
+      Showing <%= @offset + 1 %>–<%= [@offset + @per_page, @total_count].min %> of <%= @total_count %>
+      <span class="block sm:inline">Page <%= @page %> of <%= @total_pages %></span>
+    </p>
+
+    <% if @total_pages > 1 %>
+      <div class="flex items-center gap-3">
+        <% if @page > 1 %>
+          <%= link_to "Previous", url_for(filters.merge(page: @page - 1)), rel: "prev",
+              data: { turbo_frame: frame, turbo_action: "advance" },
+              class: "inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+        <% else %>
+          <span aria-disabled="true" class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-400">Previous</span>
+        <% end %>
+
+        <% if @page < @total_pages %>
+          <%= link_to "Next", url_for(filters.merge(page: @page + 1)), rel: "next",
+              data: { turbo_frame: frame, turbo_action: "advance" },
+              class: "inline-block cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+        <% else %>
+          <span aria-disabled="true" class="inline-block rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-400">Next</span>
+        <% end %>
+      </div>
+    <% end %>
+  </nav>
+<% end %>

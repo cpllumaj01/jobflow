@@ -206,7 +206,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "index returns all owned jobs newest first without filters" do
+  test "index returns owned jobs newest first without filters" do
     @job.update!(created_at: 2.days.ago)
     newer_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel", created_at: 1.day.ago)
 
@@ -337,6 +337,130 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
       assert_select "tbody a", count: 1
       assert_select "a[href=?]", job_path(@job)
     end
+  end
+
+  test "pagination has stable boundaries for jobs with identical creation times" do
+    @job.update!(created_at: 1.day.ago)
+    timestamp = Time.current
+    added_jobs = Array.new(50) do |index|
+      customers(:johnson).jobs.create!(name: "Paged job #{index}", created_at: timestamp)
+    end
+    expected_jobs = added_jobs.reverse + [ @job ]
+
+    get jobs_url
+    assert_select "tbody a" do |links|
+      assert_equal expected_jobs.first(25).map { |job| job_path(job) }, links.map { |link| link["href"] }
+    end
+    assert_select "nav[aria-label='Pagination']" do
+      assert_select "p", text: /Showing 1–25 of 51\s+Page 1 of 3/
+      assert_select "span[aria-disabled='true']", text: "Previous"
+      assert_select "a[rel='prev']", count: 0
+    end
+
+    get css_select("a[rel='next']").first["href"]
+    assert_select "tbody a" do |links|
+      assert_equal expected_jobs.slice(25, 25).map { |job| job_path(job) }, links.map { |link| link["href"] }
+    end
+    assert_select "nav[aria-label='Pagination'] p", text: /Showing 26–50 of 51\s+Page 2 of 3/
+
+    get css_select("a[rel='next']").first["href"]
+    assert_select "tbody a[href=?]", job_path(@job), count: 1
+    assert_select "tbody a", count: 1
+    assert_select "nav[aria-label='Pagination']" do
+      assert_select "p", text: /Showing 51–51 of 51\s+Page 3 of 3/
+      assert_select "span[aria-disabled='true']", text: "Next"
+      assert_select "a[rel='next']", count: 0
+    end
+
+    get css_select("a[rel='prev']").first["href"]
+    assert_select "nav[aria-label='Pagination'] p", text: /Page 2 of 3/
+    assert_select "tbody a[href=?]", job_path(jobs(:office_buildout)), count: 0
+  end
+
+  test "pagination preserves combined filters and targets the results frame" do
+    26.times { customers(:johnson).jobs.create!(name: "Kitchen & bath", status: "draft") }
+    customers(:fairfield).jobs.create!(name: "Kitchen & bath", status: "draft")
+    customers(:johnson).jobs.create!(name: "Kitchen & bath", status: "completed")
+
+    get jobs_url, params: { q: "Kitchen & bath", status: "draft" }
+
+    assert_select "tbody tr", count: 25
+    assert_select "turbo-frame#jobs_results a[rel='next'][data-turbo-frame='jobs_results'][data-turbo-action='advance'][href=?]",
+      jobs_path(q: "Kitchen & bath", status: "draft", page: 2)
+
+    get css_select("a[rel='next']").first["href"], headers: { "Turbo-Frame" => "jobs_results" }
+
+    assert_response :success
+    assert_select "turbo-frame#jobs_results" do
+      assert_select "tbody tr", count: 1
+      assert_select "nav[aria-label='Pagination'] p", text: /Showing 26–26 of 26\s+Page 2 of 2/
+      assert_select "a[rel='prev'][href=?]", jobs_path(q: "Kitchen & bath", status: "draft", page: 1)
+    end
+  end
+
+  test "filter submissions and reset links omit the current page" do
+    get jobs_url, params: { q: "Kitchen", status: "in_progress", page: 2 }
+
+    assert_select "form[action=?][method='get']", jobs_path do
+      assert_select "input[name='page']", count: 0
+      assert_select "input[name='q'][value='Kitchen']"
+      assert_select "select[name='status'] option[selected][value='in_progress']"
+      assert_select "a[href=?]", jobs_path, text: "Reset filters"
+    end
+  end
+
+  test "invalid page values use the first page and excessive values use the last page" do
+    25.times { |index| customers(:johnson).jobs.create!(name: "Paged job #{index}", created_at: 1.day.from_now) }
+
+    [ "invalid", "", "0", "-2", "1.5", "2oops", [ "2" ], { number: "2" } ].each do |page|
+      get jobs_url, params: { page: page }
+
+      assert_response :success
+      assert_select "tbody tr", count: 25
+      assert_select "nav[aria-label='Pagination'] p", text: /Page 1 of 2/
+    end
+
+    get jobs_url, params: { page: "9" * 100 }
+    assert_response :success
+    assert_select "tbody a[href=?]", job_path(@job)
+    assert_select "tbody tr", count: 1
+    assert_select "nav[aria-label='Pagination'] p", text: /Page 2 of 2/
+  end
+
+  test "single and empty pages have no pagination links" do
+    get jobs_url
+    assert_select "nav[aria-label='Pagination'] p", text: /Showing 1–1 of 1\s+Page 1 of 1/
+    assert_select "nav[aria-label='Pagination'] a", count: 0
+
+    get jobs_url, params: { q: "No matches", page: 999 }
+    assert_response :success
+    assert_select "h2", "No jobs match your filters"
+    assert_select "nav[aria-label='Pagination']", count: 0
+
+    @job.destroy!
+    get jobs_url, params: { page: 999 }
+    assert_select "h2", "No jobs yet"
+    assert_select "nav[aria-label='Pagination']", count: 0
+  end
+
+  test "pagination only instantiates one page of jobs and preloads customers" do
+    30.times { |index| @user.customers.create!(name: "Customer #{index}").jobs.create!(name: "Job #{index}") }
+    instantiated = Hash.new(0)
+    subscriber = ->(event) { instantiated[event.payload[:class_name]] += event.payload[:record_count] }
+    customer_queries = 0
+    query_subscriber = ->(event) { customer_queries += 1 if event.payload[:name] == "Customer Load" }
+
+    ActiveSupport::Notifications.subscribed(query_subscriber, "sql.active_record") do
+      ActiveSupport::Notifications.subscribed(subscriber, "instantiation.active_record") do
+        get jobs_url
+      end
+    end
+
+    assert_response :success
+    assert_equal 25, instantiated["Job"]
+    assert_equal 25, instantiated["Customer"]
+    assert_equal 1, customer_queries
+    assert_select "tbody tr", count: 25
   end
 
   test "job summary displays unapproved estimate total separately from contract value" do
