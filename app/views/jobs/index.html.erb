@@ -1,4 +1,6 @@
 <% content_for :title, "Jobs" %>
+<%# After frame pagination, Back can restore page 3's results at page 1's URL from a cached snapshot. %>
+<% turbo_exempts_page_from_cache %>
 
 <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
   <div class="min-w-0">
@@ -102,4 +104,5 @@
       </div>
     <% end %>
   </div>
+  <%= render "shared/pagination", filters: { q: @query.presence, status: @status.presence }.compact, frame: "jobs_results" %>
 <% end %>

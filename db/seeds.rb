@@ -3,7 +3,7 @@ abort "Demo seeds are disabled in production." if Rails.env.production?
 require Rails.root.join("lib/demo_data")
 
 puts "Seeding JobFlow demo data..."
-user = DemoData.populate!(password: "passwordpassword")
+user = DemoData.populate!(password: "passwordpassword", pagination: ENV["SEED_PAGINATION"] == "true")
 
 puts
 puts "Seed complete."

@@ -2,7 +2,7 @@ class CustomersController < ApplicationController
   before_action :set_customer, only: %i[show edit update destroy]
 
   def index
-    @customers = Current.user.customers.order(:name)
+    @customers = paginate(Current.user.customers.order(:name, :id)).load
   end
 
   def show

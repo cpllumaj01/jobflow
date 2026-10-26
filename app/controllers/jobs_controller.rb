@@ -5,7 +5,7 @@ class JobsController < ApplicationController
   def index
     @query = params[:q].to_s.strip
     @status = params[:status].to_s
-    @jobs = Current.user.jobs.includes(:customer).order(created_at: :desc)
+    @jobs = Current.user.jobs.order(created_at: :desc, id: :desc)
 
     if @query.present?
       pattern = "%#{Job.sanitize_sql_like(@query)}%"
@@ -18,6 +18,8 @@ class JobsController < ApplicationController
     if @status.present?
       @jobs = Job::STATUSES.include?(@status) ? @jobs.where(status: @status) : @jobs.none
     end
+
+    @jobs = paginate(@jobs).includes(:customer).load
   end
 
   def show

@@ -3,8 +3,9 @@ require "stringio"
 module DemoData
   EMAIL = "demo@jobflow.test".freeze
 
-  def self.populate!(password:)
+  def self.populate!(password:, pagination: false)
     raise ArgumentError, "Demo password must be present." if password.blank?
+    raise ArgumentError, "Pagination demo data is development-only." if pagination && !Rails.env.development?
 
     User.transaction do
       # Serialize refreshes, including concurrent first-time account creation.
@@ -325,6 +326,41 @@ module DemoData
         filename: "kitchen-renovation-scope.txt",
         content_type: "text/plain"
       )
+
+      if pagination
+        surnames = %w[
+          Bennett Brooks Carter Collins Cooper Davis Ellis Evans Foster Garcia Graham
+          Grant Green Harris Hayes Hughes Kelly King Lewis Martin Mitchell Morgan
+          Morris Murphy Nelson Parker Patel Perry Phillips Price Reed Reynolds
+          Roberts Robinson Russell Scott Stewart Taylor Turner Walker Ward Watson
+        ]
+        first_names = %w[Alex Maya Jordan Olivia Sam Elena Daniel]
+        streets = [ "Cedar Lane", "Oak Avenue", "Maple Street", "Brookside Road", "Pine Drive", "Willow Court", "Meadow Lane" ]
+        towns = %w[Fairfield Westport Stamford Trumbull Norwalk Milford]
+        projects = [ "Kitchen Renovation", "Bathroom Remodel", "Deck Replacement", "Basement Finishing",
+          "Window Replacement", "Exterior Painting", "Home Office Remodel" ]
+
+        surnames.each_with_index do |surname, index|
+          address = "#{20 + index * 3} #{streets[index % streets.length]}, #{towns[index % towns.length]}, CT"
+          customer = user.customers.create!(
+            name: "#{surname} Residence",
+            contact_name: "#{first_names[index % first_names.length]} #{surname}",
+            email: "#{surname.downcase}@example.com",
+            phone: format("203-555-%04d", 100 + index),
+            address: address,
+            notes: "Fictional customer for development pagination testing."
+          )
+          status = Job::STATUSES[index % Job::STATUSES.length]
+          customer.jobs.create!(
+            name: "#{projects[index % projects.length]} at #{surname} Residence",
+            description: "Residential improvements at #{address}.",
+            address: address,
+            status: status,
+            completed_at: status == "completed" ? (index + 1).days.ago : nil,
+            created_at: (index + 1).days.ago
+          )
+        end
+      end
 
       user
     end

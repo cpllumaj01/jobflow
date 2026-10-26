@@ -27,12 +27,12 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
     test "core screens fit a #{width}px viewport" do
       set_viewport(width)
 
-      within "nav" do
+      within "nav[aria-label='Main navigation']" do
         click_on "Customers"
       end
       assert_current_path customers_path
       assert_scrollable_table "Customers", width
-      within "nav" do
+      within "nav[aria-label='Main navigation']" do
         click_on "Jobs", exact: true
       end
       assert_current_path jobs_path
