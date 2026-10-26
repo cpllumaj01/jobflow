@@ -33,7 +33,16 @@ class EstimatesController < ApplicationController
 
     @estimate = @job.build_estimate(estimate_params)
 
-    if @estimate.save
+    saved = Estimate.transaction do
+      @estimate.save.tap do |success|
+        if success
+          @job.activities.create!(actor: Current.user, event: "estimate_created",
+            metadata: { estimate_id: @estimate.id, new_status: @estimate.status })
+        end
+      end
+    end
+
+    if saved
       redirect_to job_estimate_path(@job), notice: "Estimate was successfully created."
     else
       render :new, status: :unprocessable_entity
@@ -73,7 +82,17 @@ class EstimatesController < ApplicationController
     end
 
     def update_status(status)
-      if @estimate.update(status: status)
+      updated = @estimate.with_lock do
+        @estimate.update(status: status).tap do |success|
+          if success && @estimate.saved_change_to_status?
+            previous_status, new_status = @estimate.saved_change_to_status
+            @job.activities.create!(actor: Current.user, event: "estimate_status_changed",
+              metadata: { estimate_id: @estimate.id, previous_status: previous_status, new_status: new_status })
+          end
+        end
+      end
+
+      if updated
         redirect_to job_estimate_path(@job), notice: "Estimate marked as #{status}.", status: :see_other
       else
         flash.now[:alert] = @estimate.errors.full_messages.to_sentence

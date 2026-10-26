@@ -4,6 +4,7 @@ class Job < ApplicationRecord
   belongs_to :customer
   has_one :estimate, dependent: :destroy
   has_many :change_orders, dependent: :destroy
+  has_many :activities, as: :trackable, dependent: :destroy
   has_many_attached :files
 
   MAX_FILE_SIZE = 20.megabytes

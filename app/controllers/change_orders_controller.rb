@@ -18,7 +18,16 @@ class ChangeOrdersController < ApplicationController
   def create
     @change_order = @job.change_orders.new(change_order_params)
 
-    if @change_order.save
+    saved = ChangeOrder.transaction do
+      @change_order.save.tap do |success|
+        if success
+          @job.activities.create!(actor: Current.user, event: "change_order_created",
+            metadata: { change_order_id: @change_order.id, title: @change_order.title, new_status: @change_order.status })
+        end
+      end
+    end
+
+    if saved
       redirect_to job_change_order_path(@job, @change_order), notice: "Change order was successfully created."
     else
       render :new, status: :unprocessable_entity
@@ -50,7 +59,18 @@ class ChangeOrdersController < ApplicationController
 
   private
     def update_status(status)
-      if @change_order.update(status: status)
+      updated = @change_order.with_lock do
+        @change_order.update(status: status).tap do |success|
+          if success && @change_order.saved_change_to_status?
+            previous_status, new_status = @change_order.saved_change_to_status
+            @job.activities.create!(actor: Current.user, event: "change_order_status_changed",
+              metadata: { change_order_id: @change_order.id, title: @change_order.title,
+                          previous_status: previous_status, new_status: new_status })
+          end
+        end
+      end
+
+      if updated
         redirect_to job_change_order_path(@job, @change_order), notice: "Change order marked as #{status}.", status: :see_other
       else
         flash.now[:alert] = @change_order.errors.full_messages.to_sentence
