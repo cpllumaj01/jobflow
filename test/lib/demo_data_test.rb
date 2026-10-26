@@ -13,13 +13,14 @@ class DemoDataTest < ActiveSupport::TestCase
 
     Rails.application.load_tasks unless Rake::Task.task_defined?("demo:bootstrap")
     @task = Rake::Task["demo:bootstrap"]
-    @original_env = ENV.to_h.slice("ALLOW_PRODUCTION_DEMO_BOOTSTRAP", "DEMO_PASSWORD")
+    @original_env = ENV.to_h.slice("ALLOW_PRODUCTION_DEMO_BOOTSTRAP", "DEMO_PASSWORD", "SEED_PAGINATION")
     ENV.delete("ALLOW_PRODUCTION_DEMO_BOOTSTRAP")
     ENV.delete("DEMO_PASSWORD")
+    ENV.delete("SEED_PAGINATION")
   end
 
   teardown do
-    %w[ALLOW_PRODUCTION_DEMO_BOOTSTRAP DEMO_PASSWORD].each do |key|
+    %w[ALLOW_PRODUCTION_DEMO_BOOTSTRAP DEMO_PASSWORD SEED_PAGINATION].each do |key|
       ENV[key] = @original_env[key]
     end
     @storage_service.root = @original_storage_root
@@ -35,6 +36,7 @@ class DemoDataTest < ActiveSupport::TestCase
     original_user_ids = User.ids.sort
     ENV["ALLOW_PRODUCTION_DEMO_BOOTSTRAP"] = "true"
     ENV["DEMO_PASSWORD"] = "local-test-demo-password"
+    ENV["SEED_PAGINATION"] = "true"
 
     2.times do
       in_production do
@@ -84,6 +86,7 @@ class DemoDataTest < ActiveSupport::TestCase
   test "normal production seeds remain blocked even with bootstrap opt-in" do
     ENV["ALLOW_PRODUCTION_DEMO_BOOTSTRAP"] = "true"
     ENV["DEMO_PASSWORD"] = "local-test-demo-password"
+    ENV["SEED_PAGINATION"] = "true"
     in_production do
       assert_no_difference [ "User.count", "Customer.count", "Job.count" ] do
         _out, err = capture_io do
@@ -110,7 +113,91 @@ class DemoDataTest < ActiveSupport::TestCase
     assert_equal digest, demo.password_digest
   end
 
+  test "development pagination seeds are repeatable preserve normal samples and leave other users alone" do
+    unrelated_records = [ users(:one), customers(:johnson), jobs(:kitchen_renovation) ]
+    original_attributes = unrelated_records.map(&:attributes)
+    ENV["SEED_PAGINATION"] = "true"
+    original_customers = original_jobs = nil
+
+    in_development do
+      2.times do
+        capture_io { load Rails.root.join("db/seeds.rb") }
+        demo = User.find_by!(email_address: DemoData::EMAIL)
+
+        assert demo.authenticate("passwordpassword")
+        assert_equal 46, demo.customers.count
+        assert_equal 48, demo.jobs.count
+        assert_equal Job::STATUSES.index_with { 8 }, demo.jobs.group(:status).count
+        assert_equal 6, demo.jobs.where("jobs.name ILIKE ?", "%Kitchen%").where.not(name: "Kitchen Renovation").count
+        assert_equal 42, demo.jobs.where("jobs.name ILIKE ?", "%Residence%").count
+        assert_equal 6, Estimate.where(job_id: demo.jobs.select(:id)).count
+        kitchen = demo.jobs.find_by!(name: "Kitchen Renovation")
+        assert_equal 25_960, kitchen.current_contract_value
+        assert_equal 4, kitchen.change_orders.count
+        assert_equal "kitchen-renovation-scope.txt", kitchen.files.first.filename.to_s
+        assert_equal original_attributes, unrelated_records.map { |record| record.reload.attributes }
+
+        customer_data = demo.customers.order(:name).pluck(:name, :contact_name, :email, :address)
+        job_data = demo.jobs.order(:name).pluck(:name, :status, :address)
+        assert_equal original_customers, customer_data if original_customers
+        assert_equal original_jobs, job_data if original_jobs
+        original_customers, original_jobs = customer_data, job_data
+      end
+
+      ENV.delete("SEED_PAGINATION")
+      capture_io { load Rails.root.join("db/seeds.rb") }
+      demo = User.find_by!(email_address: DemoData::EMAIL)
+      assert_equal 4, demo.customers.count
+      assert_equal 6, demo.jobs.count
+    end
+  end
+
+  test "development seeds require the exact pagination opt-in" do
+    in_development do
+      [ "false", "1", "TRUE" ].each do |opt_in|
+        ENV["SEED_PAGINATION"] = opt_in
+        capture_io { load Rails.root.join("db/seeds.rb") }
+        demo = User.find_by!(email_address: DemoData::EMAIL)
+        assert_equal 4, demo.customers.count
+        assert_equal 6, demo.jobs.count
+      end
+    end
+  end
+
+  test "pagination option is rejected outside development before replacing demo data" do
+    demo = DemoData.populate!(password: "original-demo-password")
+    original_digest = demo.password_digest
+    original_customers = demo.customers.ids.sort
+    original_jobs = demo.jobs.ids.sort
+    original_env = Rails.env
+
+    begin
+      %w[test staging production].each do |environment|
+        Rails.env = environment
+        assert_no_difference [ "User.count", "Customer.count", "Job.count" ] do
+          error = assert_raises(ArgumentError) do
+            DemoData.populate!(password: "replacement-demo-password", pagination: true)
+          end
+          assert_match(/development-only/, error.message)
+        end
+        assert_equal original_digest, demo.reload.password_digest
+        assert_equal original_customers, demo.customers.ids.sort
+        assert_equal original_jobs, demo.jobs.ids.sort
+      end
+    ensure
+      Rails.env = original_env
+    end
+  end
+
   private
+    def in_development
+      original_env = Rails.env
+      Rails.env = "development"
+      yield
+    ensure
+      Rails.env = original_env
+    end
+
     def invoke_bootstrap
       @task.invoke
     ensure

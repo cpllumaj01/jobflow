@@ -139,6 +139,16 @@ Seeds create four customers, six jobs (kitchen renovation, bathroom remodel, off
 
 Reseeding resets the demo password and deletes/recreates the demo account's customers and their nested project data. Other users' data is left alone.
 
+To visually test Jobs and Customers pagination in development, opt in explicitly:
+
+```sh
+RAILS_ENV=development SEED_PAGINATION=true bin/rails db:seed
+```
+
+This keeps the normal demo samples and adds 42 fictional residential customers and 42 jobs, for totals of 46 customers and 48 jobs. The extra jobs cover every status and have searchable project names, customer names, and addresses; try searching for `Residence` across pages or `Kitchen` to narrow the results.
+
+The option is development-only and is not read by the production `demo:bootstrap` task. Rerunning the command recreates the same dataset without accumulating duplicates. Regular seeds and database initialization keep the normal dataset unless this flag is explicitly set to `true`. Run `bin/rails db:seed` without the flag to return to the normal demo dataset; both commands use the demo-only reset behavior described above.
+
 The live demo account is populated with production demo data. Demo seeds abort in production, and production database preparation skips automatic seeding. To explicitly refresh the deployed demo account, use the protected `demo:bootstrap` task described in [the production demo workflow](docs/DEPLOYMENT.md#production-demo-data).
 
 ## Read-only Jobs API
