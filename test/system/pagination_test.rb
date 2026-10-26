@@ -32,16 +32,20 @@ class PaginationTest < ApplicationSystemTestCase
       click_on "Next"
     end
     assert_text "Showing 51–51 of 51"
+    assert_current_path jobs_path(q: "Paged", status: "draft", page: 3)
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
     page.go_back
     assert_text "Showing 26–50 of 51"
     assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
     page.go_back
-    assert_text "Showing 1–25 of 51"
     assert_current_path jobs_path(q: "Paged", status: "draft")
+    assert_text "Showing 1–25 of 51"
+    assert_field "Search jobs", with: "Paged"
+    assert_select "Status", selected: "Draft"
     page.go_forward
     assert_text "Showing 26–50 of 51"
+    assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
     assert_field "Search jobs", with: "Paged"
     assert_select "Status", selected: "Draft"
 
@@ -50,6 +54,77 @@ class PaginationTest < ApplicationSystemTestCase
     end
     assert_current_path job_path(added_jobs.reverse[25])
     assert_selector "h1", text: added_jobs.reverse[25].name
+  end
+
+  test "browser history returns from a job to the filtered paginated list" do
+    added_jobs = Array.new(26) do |index|
+      @customer.jobs.create!(name: "Paged job #{index}", status: "draft")
+    end
+    visit jobs_path(q: "Paged", status: "draft")
+    assert_text "Showing 1–25 of 26"
+    click_on "Next"
+    assert_text "Showing 26–26 of 26"
+    within "tbody" do
+      click_on "View"
+    end
+    assert_current_path job_path(added_jobs.first)
+    assert_selector "h1", text: added_jobs.first.name
+    page.go_back
+    assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_text "Showing 26–26 of 26"
+    assert_field "Search jobs", with: "Paged"
+    assert_select "Status", selected: "Draft"
+    assert_selector "tbody tr", count: 1
+    assert_selector "tbody tr", text: added_jobs.first.name
+    page.go_forward
+    assert_current_path job_path(added_jobs.first)
+    assert_selector "h1", text: added_jobs.first.name
+  end
+
+  test "search and status changes preserve earlier pages in browser history" do
+    26.times do |index|
+      @customer.jobs.create!(name: "Paged kitchen #{index}", status: "draft")
+      @customer.jobs.create!(name: "Paged garage #{index}", status: "completed")
+    end
+
+    visit jobs_path
+    assert_text "Showing 1–25 of 53"
+    click_on "Next"
+    assert_text "Showing 26–50 of 53"
+    fill_in "Search jobs", with: "Paged"
+    assert_current_path jobs_path(q: "Paged", status: "")
+    assert_text "Showing 1–25 of 52"
+
+    page.go_back
+    assert_current_path jobs_path
+    assert_text "Showing 1–25 of 53"
+    assert_field "Search jobs", with: ""
+    assert_select "Status", selected: "All statuses"
+    page.go_forward
+    assert_current_path jobs_path(q: "Paged", status: "")
+    assert_text "Showing 1–25 of 52"
+    assert_field "Search jobs", with: "Paged"
+    assert_select "Status", selected: "All statuses"
+
+    click_on "Next"
+    assert_text "Showing 26–50 of 52"
+    select "Draft", from: "Status"
+    assert_current_path jobs_path(q: "Paged", status: "draft")
+    assert_text "Showing 1–25 of 26"
+    assert_no_selector "tbody tr", text: "Paged garage"
+
+    page.go_back
+    assert_current_path jobs_path(q: "Paged", status: "")
+    assert_text "Showing 1–25 of 52"
+    assert_field "Search jobs", with: "Paged"
+    assert_select "Status", selected: "All statuses"
+    assert_selector "tbody tr", text: "Paged garage"
+    page.go_forward
+    assert_current_path jobs_path(q: "Paged", status: "draft")
+    assert_text "Showing 1–25 of 26"
+    assert_field "Search jobs", with: "Paged"
+    assert_select "Status", selected: "Draft"
+    assert_no_selector "tbody tr", text: "Paged garage"
   end
 
   test "debounced search status changes manual submission and reset start at the first page" do
@@ -88,11 +163,15 @@ class PaginationTest < ApplicationSystemTestCase
     assert_text "Page 1 of 3"
 
     page.go_back
+    assert_current_path jobs_path(q: "Paged kitchen", status: "draft", page: 2)
     assert_text "Page 2 of 2"
+    assert_selector "tbody tr", count: 1
     assert_field "Search jobs", with: "Paged kitchen"
     assert_select "Status", selected: "Draft"
     page.go_forward
+    assert_current_path jobs_path
     assert_text "Page 1 of 3"
+    assert_selector "tbody tr", count: 25
     assert_field "Search jobs", with: ""
     assert_select "Status", selected: "All statuses"
   end

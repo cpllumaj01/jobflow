@@ -1,5 +1,5 @@
 <% content_for :title, "Jobs" %>
-<%# History visits must restore the filters and results together, rather than a stale frame snapshot. %>
+<%# After frame pagination, Back can restore page 3's results at page 1's URL from a cached snapshot. %>
 <% turbo_exempts_page_from_cache %>
 
 <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
