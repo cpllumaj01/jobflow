@@ -156,7 +156,7 @@ class JobActivityTest < ActionDispatch::IntegrationTest
     assert_equal File.read(file_fixture("project.txt")), @job.files.first.download
   end
 
-  test "timeline describes events after related resources are removed" do
+  test "timeline preserves recorded metadata after related resources are removed" do
     @estimate.update!(status: "draft")
     patch mark_sent_job_estimate_url(@job)
     patch approve_job_estimate_url(@job)
@@ -176,14 +176,22 @@ class JobActivityTest < ActionDispatch::IntegrationTest
     assert_select "section[aria-labelledby='activity-heading']" do
       assert_select "li", count: 8
       %w[sent approved rejected].each do |status|
-        assert_select "p", text: "Estimate ##{@estimate.id} marked as #{status}"
+        assert_select "li", text: /Estimate status changed/ do
+          assert_select "dt", text: "Estimate id", count: 3
+          assert_select "dd", text: @estimate.id.to_s, count: 3
+          assert_select "dd", text: status
+        end
       end
       %w[pending approved rejected].each do |status|
-        assert_select "p", text: "Change order marked as #{status}: Add under-cabinet lighting"
+        assert_select "li", text: /Change order status changed/ do
+          assert_select "dd", text: "Add under-cabinet lighting", count: 3
+          assert_select "dd", text: status
+        end
       end
-      assert_select "p", text: "Attachment added: project.txt"
-      assert_select "p", text: "Attachment removed: project.txt"
-      assert_select "p", text: /Renamed later/, count: 0
+      assert_select "p", text: "Attachment added"
+      assert_select "p", text: "Attachment removed"
+      assert_select "dd", text: "project.txt", count: 2
+      assert_select "dd", text: /Renamed later/, count: 0
       assert_select "span", text: @user.email_address, count: 8
     end
   end
@@ -201,11 +209,14 @@ class JobActivityTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "section[aria-labelledby='activity-heading']" do
-      assert_select "li > p:first-child" do |descriptions|
-        assert_equal [ "Change order created: <script>alert('change')</script>", "Estimate #123 created", "Job status changed" ],
-          descriptions.map(&:text)
+      assert_select "li > p:first-child" do |events|
+        assert_equal [ "Change order created", "Estimate created", "Job status changed" ], events.map(&:text)
       end
-      assert_select "p", text: "Quoted → In progress"
+      assert_select "dd", text: "<script>alert('change')</script>"
+      assert_select "dt", text: "Previous status"
+      assert_select "dd", text: "quoted"
+      assert_select "dt", text: "New status", count: 3
+      assert_select "dd", text: "in_progress"
       assert_select "span", text: @user.email_address, count: 2
       assert_select "time[datetime=?]", oldest.created_at.iso8601,
         text: oldest.created_at.strftime("%b %-d, %Y at %-I:%M %p %Z")
@@ -218,6 +229,61 @@ class JobActivityTest < ActionDispatch::IntegrationTest
     sign_out
     get job_url(@job)
     assert_redirected_to new_session_url
+  end
+
+  test "timeline renders incomplete metadata as ordinary label value pairs" do
+    @job.activities.create!(event: "job_status_changed", metadata: { previous_status: "quoted" })
+    @job.activities.create!(event: "estimate_status_changed", metadata: { estimate_id: 123, new_status: nil })
+    @job.activities.create!(event: "change_order_status_changed", metadata: { new_status: "approved" })
+    @job.activities.create!(event: "attachment_removed")
+    @job.activities.create!(event: "custom_event")
+
+    get job_url(@job)
+
+    assert_response :success
+    assert_select "section[aria-labelledby='activity-heading']" do
+      assert_select "p", text: "Job status changed"
+      assert_select "p", text: "Estimate status changed"
+      assert_select "p", text: "Change order status changed"
+      assert_select "p", text: "Attachment removed"
+      assert_select "p", text: "Custom event"
+      assert_select "dt", text: "Previous status"
+      assert_select "dd", text: "quoted"
+      assert_select "dt", text: "Estimate id"
+      assert_select "dd", text: "123"
+      assert_select "dd", text: "—"
+      assert_select "dd", text: "approved"
+      assert_select "li", text: /Attachment removed|Custom event/ do
+        assert_select "dl", count: 0
+      end
+      assert_select "p", text: /→/, count: 0
+    end
+  end
+
+  test "timeline renders a new event and arbitrary metadata without changing recorded activity" do
+    activity = @job.activities.create!(event: "site_visit_scheduled", actor: @user, metadata: {
+      location: "Workshop", attendees: [ "Pat", "Jo" ], confirmed: true, contract_value: 2500,
+      details: { access_token: "private token", instructions: "Use side door" }
+    })
+
+    assert_no_changes -> { activity.reload.attributes } do
+      assert_no_difference("Activity.count") { get job_url(@job) }
+    end
+
+    assert_response :success
+    assert_select "section[aria-labelledby='activity-heading']" do
+      assert_select "p", text: "Site visit scheduled"
+      assert_select "dt", text: "Location"
+      assert_select "dd", text: "Workshop"
+      assert_select "dt", text: "Confirmed"
+      assert_select "dd", text: "Yes"
+      assert_select "dt", text: "Contract value"
+      assert_select "dd", text: "2500"
+      assert_select "dt", text: "Attendees"
+      assert_select "dd", text: /Pat.*Jo/m
+      assert_select "dd", text: /\[FILTERED\].*Use side door/m
+      assert_select "li", text: /private token/, count: 0
+    end
   end
 
   test "timeline has an empty state without recording reads" do

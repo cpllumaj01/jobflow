@@ -162,7 +162,7 @@
           <li class="flex flex-wrap items-center justify-between gap-4 py-3">
             <div class="min-w-0">
               <%= link_to file.filename.to_s, job_attachment_path(@job, file),
-                  class: "break-all text-sm font-semibold text-slate-700 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
+                  class: "break-words text-sm font-semibold text-slate-700 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 py-2" %>
               <p class="mt-1 text-xs text-slate-500"><%= number_to_human_size(file.byte_size) %> · <%= file.content_type %></p>
             </div>
             <%= button_to "Remove", job_attachment_path(@job, file), method: :delete,
@@ -268,22 +268,7 @@
     <% activities = @job.activities.newest_first.includes(:actor).to_a %>
     <% if activities.any? %>
       <ol class="mt-4 divide-y divide-slate-200">
-        <% activities.each do |activity| %>
-          <li class="py-4">
-            <p class="break-words text-sm font-medium text-slate-900"><%= activity_description(activity) %></p>
-            <% if activity.metadata['previous_status'].present? %>
-              <p class="mt-1 text-sm text-slate-600">
-                <%= activity.metadata['previous_status'].humanize %> → <%= activity.metadata['new_status'].humanize %>
-              </p>
-            <% end %>
-            <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-              <% if activity.actor.present? %>
-                <span class="break-all"><%= activity.actor.email_address %></span>
-              <% end %>
-              <time datetime="<%= activity.created_at.iso8601 %>"><%= activity.created_at.strftime("%b %-d, %Y at %-I:%M %p %Z") %></time>
-            </div>
-          </li>
-        <% end %>
+        <%= render partial: "activities/activity", collection: activities %>
       </ol>
     <% else %>
       <p class="mt-4 text-sm text-slate-500">No activity yet. Status changes, estimates, change orders, and attachments will appear here.</p>
