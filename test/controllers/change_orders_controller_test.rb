@@ -74,6 +74,10 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_nil change_order.requested_at
     assert_equal BigDecimal("370.50"), change_order.total
     assert_equal 2, @job.change_orders.count
+    activity = @job.activities.sole
+    assert_equal "change_order_created", activity.event
+    assert_equal users(:one), activity.actor
+    assert_equal({ "change_order_id" => change_order.id, "title" => "Additional shelving", "new_status" => "draft" }, activity.metadata)
   end
 
   test "show displays line items and calculated total" do
@@ -177,7 +181,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "invalid create preserves input and renders errors without adding blank rows" do
-    assert_no_difference([ "ChangeOrder.count", "ChangeOrderLineItem.count" ]) do
+    assert_no_difference([ "ChangeOrder.count", "ChangeOrderLineItem.count", "Activity.count" ]) do
       post job_change_orders_url(@job), params: {
         change_order: { title: "Shelving", change_order_line_items_attributes: {
           "0" => { description: "Oak shelves", quantity: "", unit_price: 100 },
@@ -340,7 +344,17 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
         previous_approval = @change_order.approved_at
 
         freeze_time do
-          patch public_send("#{action}_job_change_order_url", @job, @change_order)
+          assert_difference("Activity.count", initial_status == target_status ? 0 : 1) do
+            patch public_send("#{action}_job_change_order_url", @job, @change_order)
+          end
+
+          if initial_status != target_status
+            activity = @job.activities.newest_first.first
+            assert_equal "change_order_status_changed", activity.event
+            assert_equal users(:one), activity.actor
+            assert_equal({ "change_order_id" => @change_order.id, "title" => @change_order.title,
+                           "previous_status" => initial_status, "new_status" => target_status }, activity.metadata)
+          end
 
           assert_response :see_other
           assert_redirected_to job_change_order_url(@job, @change_order)
@@ -391,7 +405,9 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     [ [ other_job, other_order ], [ @job, other_order ], [ @job, own_other_order ] ].each do |job, change_order|
       original_attributes = change_order.attributes
       %i[mark_pending approve reject].each do |action|
-        patch public_send("#{action}_job_change_order_url", job, change_order)
+        assert_no_difference("Activity.count") do
+          patch public_send("#{action}_job_change_order_url", job, change_order)
+        end
         assert_response :not_found
         assert_equal original_attributes, change_order.reload.attributes
       end

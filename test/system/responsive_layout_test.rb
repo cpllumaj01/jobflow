@@ -9,6 +9,8 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
     @job.update!(name: "Kitchen renovation and workshop improvements", description: "Project details #{'unbroken' * 30}")
     @unpriced_job = @customer.jobs.create!(name: "Job awaiting an estimate")
     @job.files.attach(io: StringIO.new("Project scope"), filename: "project-scope-#{'long' * 15}.txt", content_type: "text/plain")
+    @job.activities.create!(event: "attachment_added", actor: users(:one),
+      metadata: { filename: "project-scope-#{'long' * 50}.txt" })
     estimates(:kitchen_estimate).update!(status: "draft")
     @change_order.update!(title: "Additional lighting and electrical improvements")
 

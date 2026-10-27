@@ -7,12 +7,20 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "uploads multiple files and appends subsequent uploads" do
-    assert_difference("ActiveStorage::Attachment.count", 2) do
+    assert_difference([ "ActiveStorage::Attachment.count", "Activity.count" ], 2) do
       post job_attachments_url(@job), params: { job: { files: [ upload, upload ] } }
     end
     assert_redirected_to job_url(@job)
-    post job_attachments_url(@job), params: { job: { files: [ upload ] } }
+    assert_difference("Activity.count", 1) do
+      post job_attachments_url(@job), params: { job: { files: [ upload ] } }
+    end
     assert_equal 3, @job.files.count
+    @job.activities.each do |activity|
+      assert_equal "attachment_added", activity.event
+      assert_equal users(:one), activity.actor
+      assert_equal "project.txt", activity.metadata["filename"]
+      assert_includes @job.files.ids, activity.metadata["attachment_id"]
+    end
 
     get job_url(@job)
     assert_response :success
@@ -44,18 +52,26 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     file = @job.files.first
     blob = file.blob
     assert_no_difference("Job.count") do
-      assert_difference("ActiveStorage::Attachment.count", -1) do
-        delete job_attachment_url(@job, file)
+      assert_difference("Activity.count", 1) do
+        assert_difference("ActiveStorage::Attachment.count", -1) do
+          delete job_attachment_url(@job, file)
+        end
       end
     end
     assert_redirected_to job_url(@job)
     assert_equal 1, @job.reload.files.count
     assert_not ActiveStorage::Blob.exists?(blob.id)
     assert_not blob.service.exist?(blob.key)
+    activity = @job.activities.sole
+    assert_equal "attachment_removed", activity.event
+    assert_equal users(:one), activity.actor
+    assert_equal({ "attachment_id" => file.id, "filename" => "project.txt" }, activity.metadata)
+    assert_no_difference("Activity.count") { delete job_attachment_url(@job, file) }
+    assert_response :not_found
   end
 
   test "cannot upload to another users job" do
-    assert_no_difference("ActiveStorage::Attachment.count") do
+    assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
       post job_attachments_url(jobs(:office_buildout)), params: { job: { files: [ upload ] } }
     end
     assert_response :not_found
@@ -68,7 +84,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     [ other_job, @job ].each do |job|
       get job_attachment_url(job, file)
       assert_response :not_found
-      assert_no_difference("ActiveStorage::Attachment.count") do
+      assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
         delete job_attachment_url(job, file)
       end
       assert_response :not_found
@@ -81,7 +97,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     file = other_job.files.first
     get job_attachment_url(@job, file)
     assert_response :not_found
-    assert_no_difference("ActiveStorage::Attachment.count") do
+    assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
       delete job_attachment_url(@job, file)
     end
     assert_response :not_found
@@ -93,7 +109,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     delete session_url
     get job_attachment_url(@job, file)
     assert_redirected_to new_session_url
-    assert_no_difference("ActiveStorage::Attachment.count") do
+    assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
       post job_attachments_url(@job), params: { job: { files: [ upload ] } }
       assert_redirected_to new_session_url
       delete job_attachment_url(@job, file)
@@ -104,7 +120,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
   test "empty uploads and signed blob ids are rejected" do
     @job.files.attach(upload)
     [ [], [ "" ], [ @job.files.first.blob.signed_id ] ].each do |files|
-      assert_no_difference("ActiveStorage::Attachment.count") do
+      assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
         post job_attachments_url(@job), params: { job: { files: files } }
       end
       assert_response :unprocessable_entity
@@ -116,7 +132,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     @job.files.attach(upload)
     oversized = upload
     oversized.tempfile.truncate(Job::MAX_FILE_SIZE + 1)
-    assert_no_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count" ]) do
+    assert_no_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ]) do
       post job_attachments_url(@job), params: { job: { files: [ upload, oversized ] } }
     end
     assert_response :unprocessable_entity

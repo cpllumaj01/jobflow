@@ -51,9 +51,21 @@ class JobsController < ApplicationController
 
   def update
     attributes = job_params
-    @job.customer = Current.user.customers.find(attributes.delete(:customer_id))
+    customer = Current.user.customers.find(attributes.delete(:customer_id))
 
-    if @job.update(attributes)
+    updated = @job.with_lock do
+      success = @job.update(attributes.merge(customer: customer))
+
+      if success && @job.saved_change_to_status?
+        previous_status, new_status = @job.saved_change_to_status
+        @job.activities.create!(actor: Current.user, event: "job_status_changed",
+          metadata: { previous_status: previous_status, new_status: new_status })
+      end
+
+      success
+    end
+
+    if updated
       redirect_to @job, notice: "Job was successfully updated."
     else
       render :edit, status: :unprocessable_entity
