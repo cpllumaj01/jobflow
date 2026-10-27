@@ -54,13 +54,15 @@ class JobsController < ApplicationController
     customer = Current.user.customers.find(attributes.delete(:customer_id))
 
     updated = @job.with_lock do
-      @job.update(attributes.merge(customer: customer)).tap do |success|
-        if success && @job.saved_change_to_status?
-          previous_status, new_status = @job.saved_change_to_status
-          @job.activities.create!(actor: Current.user, event: "job_status_changed",
-            metadata: { previous_status: previous_status, new_status: new_status })
-        end
+      success = @job.update(attributes.merge(customer: customer))
+
+      if success && @job.saved_change_to_status?
+        previous_status, new_status = @job.saved_change_to_status
+        @job.activities.create!(actor: Current.user, event: "job_status_changed",
+          metadata: { previous_status: previous_status, new_status: new_status })
       end
+
+      success
     end
 
     if updated

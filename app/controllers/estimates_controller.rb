@@ -34,12 +34,14 @@ class EstimatesController < ApplicationController
     @estimate = @job.build_estimate(estimate_params)
 
     saved = Estimate.transaction do
-      @estimate.save.tap do |success|
-        if success
-          @job.activities.create!(actor: Current.user, event: "estimate_created",
-            metadata: { estimate_id: @estimate.id, new_status: @estimate.status })
-        end
+      success = @estimate.save
+
+      if success
+        @job.activities.create!(actor: Current.user, event: "estimate_created",
+          metadata: { estimate_id: @estimate.id, new_status: @estimate.status })
       end
+
+      success
     end
 
     if saved
@@ -83,13 +85,15 @@ class EstimatesController < ApplicationController
 
     def update_status(status)
       updated = @estimate.with_lock do
-        @estimate.update(status: status).tap do |success|
-          if success && @estimate.saved_change_to_status?
-            previous_status, new_status = @estimate.saved_change_to_status
-            @job.activities.create!(actor: Current.user, event: "estimate_status_changed",
-              metadata: { estimate_id: @estimate.id, previous_status: previous_status, new_status: new_status })
-          end
+        success = @estimate.update(status: status)
+
+        if success && @estimate.saved_change_to_status?
+          previous_status, new_status = @estimate.saved_change_to_status
+          @job.activities.create!(actor: Current.user, event: "estimate_status_changed",
+            metadata: { estimate_id: @estimate.id, previous_status: previous_status, new_status: new_status })
         end
+
+        success
       end
 
       if updated

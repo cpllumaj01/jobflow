@@ -62,14 +62,16 @@ class ChangeOrdersController < ApplicationController
   private
     def update_status(status)
       updated = @change_order.with_lock do
-        @change_order.update(status: status).tap do |success|
-          if success && @change_order.saved_change_to_status?
-            previous_status, new_status = @change_order.saved_change_to_status
-            @job.activities.create!(actor: Current.user, event: "change_order_status_changed",
-              metadata: { change_order_id: @change_order.id, title: @change_order.title,
-                          previous_status: previous_status, new_status: new_status })
-          end
+        success = @change_order.update(status: status)
+
+        if success && @change_order.saved_change_to_status?
+          previous_status, new_status = @change_order.saved_change_to_status
+          @job.activities.create!(actor: Current.user, event: "change_order_status_changed",
+            metadata: { change_order_id: @change_order.id, title: @change_order.title,
+                        previous_status: previous_status, new_status: new_status })
         end
+
+        success
       end
 
       if updated
