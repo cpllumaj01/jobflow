@@ -2,6 +2,12 @@ require "test_helper"
 require "open3"
 
 class ProductionEmailConfigurationTest < ActiveSupport::TestCase
+  setup do
+    @encryption_environment = %w[PRIMARY_KEY DETERMINISTIC_KEY KEY_DERIVATION_SALT].to_h do |setting|
+      [ "ACTIVE_RECORD_ENCRYPTION_#{setting}", SecureRandom.hex(32) ]
+    end
+  end
+
   test "production uses Resend with an explicit HTTPS host and sender" do
     script = <<~'SCRIPT'
       user = Struct.new(:email_address, :password_reset_token, :password_reset_token_expires_in).new("recipient@example.org", "test-token", 15.minutes)
@@ -16,8 +22,8 @@ class ProductionEmailConfigurationTest < ActiveSupport::TestCase
       })
     SCRIPT
     output, error, status = Open3.capture3(
-      { "RAILS_ENV" => "production", "APP_HOST" => "jobflow.example.org", "MAILER_FROM" => "JobFlow <reset@example.org>",
-        "RESEND_API_KEY" => "test-only-key", "SECRET_KEY_BASE" => "test-secret-" * 8, "SECRET_KEY_BASE_DUMMY" => nil },
+      @encryption_environment.merge("RAILS_ENV" => "production", "APP_HOST" => "jobflow.example.org", "MAILER_FROM" => "JobFlow <reset@example.org>",
+        "RESEND_API_KEY" => "test-only-key", "SECRET_KEY_BASE" => "test-secret-" * 8, "SECRET_KEY_BASE_DUMMY" => nil),
       "bin/rails", "runner", script
     )
     assert status.success?, error
@@ -32,11 +38,11 @@ class ProductionEmailConfigurationTest < ActiveSupport::TestCase
   end
 
   test "production rejects missing email settings and non-host URL values" do
-    environment = {
+    environment = @encryption_environment.merge(
       "RAILS_ENV" => "production", "APP_HOST" => "jobflow.example.org",
       "MAILER_FROM" => "JobFlow <reset@example.org>", "RESEND_API_KEY" => "test-only-key",
       "SECRET_KEY_BASE" => "test-secret-" * 8, "SECRET_KEY_BASE_DUMMY" => nil
-    }
+    )
     %w[APP_HOST MAILER_FROM RESEND_API_KEY].each do |name|
       _output, error, status = Open3.capture3(environment.merge(name => ""), "bin/rails", "runner", "nil")
       refute status.success?

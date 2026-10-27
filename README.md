@@ -18,6 +18,7 @@ Sign in to explore fictional customers, jobs, estimates, change orders, and a sa
 ## Features
 
 - Session-based sign-in, registration, sign-out, and password reset.
+- Optional authenticator-app two-factor authentication with single-use recovery codes and account security settings.
 - Customer management and jobs with status, address, description, and scheduling dates.
 - Estimates with quantity/unit-price line items and draft, sent, approved, and rejected statuses.
 - Estimate PDF downloads with project details, line items, and totals.
@@ -87,7 +88,7 @@ createuser --createdb YOUR_OS_USERNAME
 
 Replace `YOUR_OS_USERNAME` with the account running Rails. If your PostgreSQL installation requires a host, username, or password, configure the local connection using the options described in `config/database.yml`; do not commit credentials.
 
-No application-specific environment variables are required for the default local setup.
+Configure the three Active Record Encryption environment variables before booting development; see [two-factor authentication setup](docs/TWO_FACTOR_AUTHENTICATION.md). Tests generate disposable encryption keys automatically.
 
 From the repository root:
 
