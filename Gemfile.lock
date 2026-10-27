@@ -304,7 +304,7 @@ GEM
     regexp_parser (2.12.0)
     reline (0.7.0)
       io-console (~> 0.5)
-    resend (1.17.0)
+    resend (1.18.0)
       base64
       httparty (>= 0.22.0)
     rubocop (1.91.0)
@@ -444,7 +444,7 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rails (~> 8.1.4)
-  resend (~> 1.16)
+  resend (~> 1.18)
   rubocop-rails-omakase
   selenium-webdriver
   solid_cable
