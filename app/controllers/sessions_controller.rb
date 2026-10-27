@@ -1,8 +1,10 @@
 class SessionsController < ApplicationController
   allow_unauthenticated_access only: %i[ new create ]
-  rate_limit to: 10, within: 3.minutes, name: "ip", only: :create, with: -> { redirect_to new_session_path, alert: "Try again later." }
+  rate_limit to: 10, within: 3.minutes, name: "ip", only: :create,
+    store: AuthenticationRateLimitStore.new(cache_store), with: -> { redirect_to new_session_path, alert: "Try again later." }
   rate_limit to: 10, within: 15.minutes, name: "email", only: :create,
     by: -> { Digest::SHA256.hexdigest(params.permit(:email_address)[:email_address].to_s.strip.downcase) },
+    store: AuthenticationRateLimitStore.new(cache_store),
     with: -> { redirect_to new_session_path, alert: "Try again later." }
 
   def new

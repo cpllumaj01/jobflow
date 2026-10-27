@@ -2,9 +2,10 @@ class TwoFactorChallengesController < ApplicationController
   allow_unauthenticated_access
   before_action :prevent_caching
   before_action :set_pending_user, only: %i[new create]
-  rate_limit to: 10, within: 5.minutes, name: "ip", only: :create
+  rate_limit to: 10, within: 5.minutes, name: "ip", only: :create,
+    store: AuthenticationRateLimitStore.new(cache_store)
   rate_limit to: 10, within: 5.minutes, name: "account", only: :create,
-    scope: "second_factor", by: -> { @user.id }
+    scope: "second_factor", by: -> { @user.id }, store: AuthenticationRateLimitStore.new(cache_store)
 
   def new
   end
@@ -27,6 +28,16 @@ class TwoFactorChallengesController < ApplicationController
   end
 
   def destroy
+    token = session[:two_factor_login_token]
+    if token && (user = User.find_by_token_for(:two_factor_login, token))
+      user.with_lock do
+        # Recheck after locking: an already canceled or completed challenge
+        # must not invalidate a fresh challenge while this request waits.
+        if User.where(id: user.id).find_by_token_for(:two_factor_login, token)
+          user.increment!(:two_factor_challenge_version)
+        end
+      end
+    end
     reset_session
     redirect_to new_session_path, status: :see_other
   end

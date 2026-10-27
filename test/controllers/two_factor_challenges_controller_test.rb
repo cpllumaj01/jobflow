@@ -157,6 +157,62 @@ class TwoFactorChallengesControllerTest < ActionDispatch::IntegrationTest
     assert_empty @user.sessions
   end
 
+  test "cancel rejects a restored challenge cookie and fresh sign in still works" do
+    password_login
+    key = rails_cookie_key
+    saved_cookie = cookies[key]
+    other_user_version = users(:two).two_factor_challenge_version
+
+    delete two_factor_challenge_path, params: { user_id: users(:two).id }
+    assert_redirected_to new_session_path
+    assert_equal 1, @user.reload.two_factor_challenge_version
+    assert_equal other_user_version, users(:two).reload.two_factor_challenge_version
+
+    cookies[key] = saved_cookie
+    assert_no_difference "Session.count" do
+      post two_factor_challenge_path, params: { verification_code: @codes.first }
+    end
+    assert_redirected_to new_session_path
+    assert_equal 10, @user.reload.recovery_code_digests.size
+
+    password_login
+    new_cookie = cookies[key]
+    cookies[key] = saved_cookie
+    assert_no_changes -> { @user.reload.two_factor_challenge_version } do
+      delete two_factor_challenge_path
+    end
+    cookies[key] = new_cookie
+    post two_factor_challenge_path, params: { verification_code: @codes.first }
+    assert_redirected_to root_path
+    assert_equal 1, @user.sessions.count
+  end
+
+  test "canceling missing expired or completed challenges cannot invalidate current authentication" do
+    assert_no_changes -> { @user.reload.two_factor_challenge_version } do
+      delete two_factor_challenge_path, params: { user_id: @user.id }
+    end
+
+    password_login
+    travel 5.minutes + 1.second do
+      assert_no_changes -> { @user.reload.two_factor_challenge_version } do
+        delete two_factor_challenge_path
+      end
+    end
+
+    password_login
+    saved_cookie = cookies[rails_cookie_key]
+    post two_factor_challenge_path, params: { verification_code: @codes.first }
+    authentication_cookie = cookies[:session_id]
+    cookies[rails_cookie_key] = saved_cookie
+    assert_no_changes -> { @user.reload.two_factor_challenge_version } do
+      delete two_factor_challenge_path
+    end
+    assert_equal authentication_cookie, cookies[:session_id]
+    get jobs_path
+    assert_response :success
+    assert_equal 1, @user.sessions.count
+  end
+
   test "starting a challenge drops a previously authenticated session" do
     sign_in_as users(:two)
     previous = Current.session

@@ -16,7 +16,7 @@ class User < ApplicationRecord
   # Only a fingerprint is embedded in Rails' signed tokens. A password/security
   # change or a successful second factor invalidates outstanding challenges.
   generates_token_for :two_factor_login, expires_in: 5.minutes do
-    two_factor_token_state
+    [ two_factor_token_state, two_factor_challenge_version ]
   end
 
   generates_token_for :two_factor_setup, expires_in: 10.minutes do

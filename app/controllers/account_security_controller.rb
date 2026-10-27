@@ -1,9 +1,10 @@
 class AccountSecurityController < ApplicationController
   before_action :prevent_caching
   around_action :lock_account, except: :show
-  rate_limit to: 10, within: 5.minutes, name: "ip", except: :show
+  rate_limit to: 10, within: 5.minutes, name: "ip", except: :show,
+    store: AuthenticationRateLimitStore.new(cache_store)
   rate_limit to: 10, within: 5.minutes, name: "account", except: :show,
-    scope: "second_factor", by: -> { Current.user.id }
+    scope: "second_factor", by: -> { Current.user.id }, store: AuthenticationRateLimitStore.new(cache_store)
 
   def show
   end
