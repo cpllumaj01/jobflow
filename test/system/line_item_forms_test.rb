@@ -27,9 +27,6 @@ class LineItemFormsTest < ApplicationSystemTestCase
   end
 
   test "estimate Add line item adds another editable row" do
-    skip "Flaky WebDriver input delivery; see #44"
-
-
     open_new_estimate
     fill_line_item "Original work"
 
