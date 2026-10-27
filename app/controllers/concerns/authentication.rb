@@ -30,12 +30,22 @@ module Authentication
     end
 
     def request_authentication
-      session[:return_to_after_authenticating] = request.url
+      session[:return_to_after_authenticating] = request.url unless session[:two_factor_login_token]
       redirect_to new_session_path
     end
 
     def after_authentication_url
-      session.delete(:return_to_after_authenticating) || root_url
+      url_from(session.delete(:return_to_after_authenticating)) || root_url
+    end
+
+    def begin_two_factor_challenge(user, return_to:)
+      resume_session&.destroy!
+      Current.session = nil
+      cookies.delete(:session_id)
+      reset_session
+
+      session[:two_factor_login_token] = user.generate_token_for(:two_factor_login)
+      session[:return_to_after_authenticating] = return_to
     end
 
     def start_new_session_for(user)

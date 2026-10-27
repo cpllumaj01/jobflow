@@ -41,6 +41,7 @@ The default container entrypoint prepares databases automatically. For a hosting
 | `RAILS_ENV=production` | Already set by the Dockerfile. |
 | `RAILS_MASTER_KEY` | Matching decryption key for the deployed Rails credentials. The Kamal template obtains it from local `config/master.key`; keep keys in the host's secret manager, never in the image or Git. Environment-specific credentials require their matching key. |
 | `SECRET_KEY_BASE` | Rails normally obtains this from encrypted credentials. Alternatively inject a strong, stable runtime secret. It does not replace keys needed to decrypt other credentials. Changing it invalidates signed sessions/tokens. |
+| `ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY`, `ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY`, `ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT` | Required, independent stable secrets for Active Record Encryption and 2FA. Supply through the host's secret manager on web, worker, and migration processes. See [2FA configuration and key handling](TWO_FACTOR_AUTHENTICATION.md#encryption-configuration). Missing values prevent runtime boot; asset builds using `SECRET_KEY_BASE_DUMMY` are exempt. |
 | Database URLs or `JOBFLOW_DATABASE_PASSWORD` | See database configuration above; use the provider's secret store. |
 | `SECRET_KEY_BASE_DUMMY` | Build-only, used for asset compilation. Never set it on a deployed runtime. |
 | `RAILS_LOG_LEVEL` | Optional; defaults to `info`. Logs go to stdout with request IDs; `/up` requests are silenced. Arrange log retention at the host. |

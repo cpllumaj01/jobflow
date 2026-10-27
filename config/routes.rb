@@ -21,6 +21,14 @@ Rails.application.routes.draw do
     end
   end
   resource :session
+  resource :two_factor_challenge, only: %i[new create destroy]
+  resource :account_security, controller: "account_security", only: :show do
+    post :setup
+    patch :enable
+    delete :cancel_setup
+    post :recovery_codes
+    delete :two_factor
+  end
   resources :passwords, param: :token
 
   get "sign_up" => "registrations#new", as: :sign_up

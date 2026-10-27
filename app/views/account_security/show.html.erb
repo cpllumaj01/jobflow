@@ -1,0 +1,55 @@
+<% content_for :title, "Account security | JobFlow" %>
+<% content_for :head do %>
+  <meta name="turbo-cache-control" content="no-cache">
+<% end %>
+
+<div class="mx-auto w-full max-w-xl space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-950">Account security</h1>
+    <p class="mt-2 text-sm text-slate-600">Protect your account with an authenticator app.</p>
+  </div>
+
+  <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <h2 class="text-lg font-semibold text-slate-950">Two-factor authentication</h2>
+    <% if Current.user.two_factor_enabled? %>
+      <p class="mt-2 text-sm text-slate-600">Enabled. Sign-in requires your password and an authenticator code or recovery code.</p>
+      <p class="mt-2 text-sm text-slate-600"><%= Current.user.recovery_code_digests.size %> recovery codes remaining.</p>
+      <h3 class="mt-6 font-semibold text-slate-900">Regenerate recovery codes</h3>
+      <p class="mt-2 text-sm text-slate-600">This invalidates all previous recovery codes and signs out your other sessions.</p>
+      <%= form_with url: recovery_codes_account_security_path, data: { turbo: false }, class: "mt-6 space-y-5" do |form| %>
+        <div>
+          <%= form.label :password, "Current password", for: "regeneration_password", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.password_field :password, id: "regeneration_password", required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+        </div>
+        <div>
+          <%= form.label :verification_code, "Authenticator or recovery code", for: "regeneration_code", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.text_field :verification_code, id: "regeneration_code", required: true, autocomplete: "one-time-code", spellcheck: false, autocapitalize: "none", class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+        </div>
+        <%= form.submit "Regenerate recovery codes", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <% end %>
+
+      <h3 class="mt-8 border-t border-slate-200 pt-6 font-semibold text-slate-900">Disable two-factor authentication</h3>
+      <p class="mt-2 text-sm text-slate-600">This removes your authenticator, invalidates recovery codes, and signs out your other sessions.</p>
+      <%= form_with url: two_factor_account_security_path, method: :delete, data: { turbo: false }, class: "mt-6 space-y-5" do |form| %>
+        <div>
+          <%= form.label :password, "Current password", for: "disable_password", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.password_field :password, id: "disable_password", required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+        </div>
+        <div>
+          <%= form.label :verification_code, "Authenticator or recovery code", for: "disable_code", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.text_field :verification_code, id: "disable_code", required: true, autocomplete: "one-time-code", spellcheck: false, autocapitalize: "none", class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+        </div>
+        <%= form.submit "Disable 2FA", class: "w-full cursor-pointer rounded-lg border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700" %>
+      <% end %>
+    <% else %>
+      <p class="mt-2 text-sm text-slate-600">Not enabled. Use an app such as Google Authenticator, Microsoft Authenticator, or 1Password to add a second sign-in step.</p>
+      <%= form_with url: setup_account_security_path, data: { turbo: false }, class: "mt-6 space-y-5" do |form| %>
+        <div>
+          <%= form.label :password, "Current password", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+        </div>
+        <%= form.submit "Set up two-factor authentication", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
