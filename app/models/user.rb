@@ -3,6 +3,7 @@ class User < ApplicationRecord
   has_many :sessions, dependent: :destroy
   has_many :customers, dependent: :destroy
   has_many :jobs, through: :customers
+  has_many :activities, foreign_key: :actor_id, inverse_of: :actor, dependent: :nullify
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 

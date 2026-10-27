@@ -18,6 +18,7 @@ class PaginationTest < ApplicationSystemTestCase
     end
     visit jobs_path(q: "Paged", status: "draft")
     assert_text "Page 1 of 3"
+    assert_list_records added_jobs.reverse.first(25)
     page.execute_script("window.paginationSearchField = document.querySelector('input[name=q]')")
 
     within "nav[aria-label='Pagination']" do
@@ -25,6 +26,7 @@ class PaginationTest < ApplicationSystemTestCase
     end
     assert_text "Showing 26–50 of 51"
     assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_list_records added_jobs.reverse.slice(25, 25)
     assert page.evaluate_script("window.paginationSearchField === document.querySelector('input[name=q]')")
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
 
@@ -33,19 +35,23 @@ class PaginationTest < ApplicationSystemTestCase
     end
     assert_text "Showing 51–51 of 51"
     assert_current_path jobs_path(q: "Paged", status: "draft", page: 3)
+    assert_list_records [ added_jobs.first ]
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
     page.go_back
     assert_text "Showing 26–50 of 51"
     assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_list_records added_jobs.reverse.slice(25, 25)
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
     page.go_back
     assert_current_path jobs_path(q: "Paged", status: "draft")
     assert_text "Showing 1–25 of 51"
+    assert_list_records added_jobs.reverse.first(25)
     assert_field "Search jobs", with: "Paged"
     assert_select "Status", selected: "Draft"
     page.go_forward
     assert_text "Showing 26–50 of 51"
     assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_list_records added_jobs.reverse.slice(25, 25)
     assert_field "Search jobs", with: "Paged"
     assert_select "Status", selected: "Draft"
 
@@ -56,10 +62,25 @@ class PaginationTest < ApplicationSystemTestCase
     assert_selector "h1", text: added_jobs.reverse[25].name
   end
 
-  test "browser history returns from a job to the filtered paginated list" do
+  test "browser history restores the filtered paginated list and job activity" do
     added_jobs = Array.new(26) do |index|
-      @customer.jobs.create!(name: "Paged job #{index}", status: "draft")
+      @customer.jobs.create!(name: "Paged job #{index}", status: index.zero? ? "quoted" : "draft")
     end
+    job = added_jobs.first
+    visit edit_job_path(job)
+    select "Draft", from: "Status"
+    click_on "Update Job"
+    assert_current_path job_path(job)
+    within "section[aria-labelledby='activity-heading']" do
+      assert_selector "li", count: 1
+      assert_text "Job status changed"
+      assert_selector "dt", text: "Previous status"
+      assert_selector "dd", text: "quoted"
+      assert_selector "dt", text: "New status"
+      assert_selector "dd", text: "draft"
+      assert_text users(:one).email_address
+    end
+
     visit jobs_path(q: "Paged", status: "draft")
     assert_text "Showing 1–25 of 26"
     click_on "Next"
@@ -69,16 +90,64 @@ class PaginationTest < ApplicationSystemTestCase
     end
     assert_current_path job_path(added_jobs.first)
     assert_selector "h1", text: added_jobs.first.name
+    within "section[aria-labelledby='activity-heading']" do
+      assert_selector "li", count: 1
+      assert_selector "dd", text: "quoted"
+      assert_selector "dd", text: "draft"
+    end
     page.go_back
     assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
     assert_text "Showing 26–26 of 26"
     assert_field "Search jobs", with: "Paged"
     assert_select "Status", selected: "Draft"
-    assert_selector "tbody tr", count: 1
-    assert_selector "tbody tr", text: added_jobs.first.name
+    assert_list_records [ job ]
     page.go_forward
     assert_current_path job_path(added_jobs.first)
     assert_selector "h1", text: added_jobs.first.name
+    within "section[aria-labelledby='activity-heading']" do
+      assert_selector "li", count: 1
+      assert_selector "dd", text: "quoted"
+      assert_selector "dd", text: "draft"
+    end
+    activity = job.activities.sole
+    assert_equal users(:one), activity.actor
+    assert_equal({ "previous_status" => "quoted", "new_status" => "draft" }, activity.metadata)
+    assert_empty added_jobs.last.activities
+  end
+
+  test "customer pagination preserves ordered owned records through browser history" do
+    added_customers = Array.new(26) do |index|
+      users(:one).customers.create!(name: format("Paged customer %02d", index))
+    end
+    users(:two).customers.create!(name: "Paged customer from another account")
+    expected_customers = [ @customer ] + added_customers
+
+    visit customers_path
+    assert_text "Showing 1–25 of 27"
+    assert_list_records expected_customers.first(25)
+    click_on "Next"
+    assert_current_path customers_path(page: 2)
+    assert_text "Showing 26–27 of 27"
+    assert_list_records expected_customers.last(2)
+
+    page.go_back
+    assert_current_path customers_path
+    assert_text "Showing 1–25 of 27"
+    assert_list_records expected_customers.first(25)
+    page.go_forward
+    assert_current_path customers_path(page: 2)
+    assert_text "Showing 26–27 of 27"
+    assert_list_records expected_customers.last(2)
+
+    within "tbody tr", text: added_customers.last.name do
+      click_on "View"
+    end
+    assert_current_path customer_path(added_customers.last)
+    assert_selector "h1", text: added_customers.last.name
+    page.go_back
+    assert_current_path customers_path(page: 2)
+    assert_text "Showing 26–27 of 27"
+    assert_list_records expected_customers.last(2)
   end
 
   test "search and status changes preserve earlier pages in browser history" do
@@ -207,6 +276,14 @@ class PaginationTest < ApplicationSystemTestCase
   end
 
   private
+    def assert_list_records(records)
+      expected_paths = records.map { |record| polymorphic_path(record) }
+      assert_selector "tbody tr", count: records.size
+      assert_selector "tbody" do |table|
+        table.all("a", minimum: 0).map { |link| URI.parse(link[:href]).path } == expected_paths
+      end
+    end
+
     def assert_pagination_fits(width)
       all("a").each do |link|
         rect = link.evaluate_script("this.getBoundingClientRect().toJSON()")

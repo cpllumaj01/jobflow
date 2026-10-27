@@ -171,10 +171,14 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "draft", estimate.status
     assert_equal 650, estimate.total
     assert_redirected_to job_estimate_url(job)
+    activity = job.activities.sole
+    assert_equal "estimate_created", activity.event
+    assert_equal @user, activity.actor
+    assert_equal({ "estimate_id" => estimate.id, "new_status" => "draft" }, activity.metadata)
   end
 
   test "create redirects when job already has estimate" do
-    assert_no_difference("Estimate.count") do
+    assert_no_difference([ "Estimate.count", "Activity.count" ]) do
       post job_estimate_url(@job), params: {
         estimate: {
           notes: "Another estimate"
@@ -188,7 +192,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
   test "invalid create preserves line items without adding blank rows" do
     job = customers(:johnson).jobs.create!(name: "Deck Replacement")
 
-    assert_no_difference([ "Estimate.count", "EstimateLineItem.count" ]) do
+    assert_no_difference([ "Estimate.count", "EstimateLineItem.count", "Activity.count" ]) do
       post job_estimate_url(job), params: {
         estimate: { estimate_line_items_attributes: {
           "0" => { description: "Lumber", quantity: 2, unit_price: "" },
@@ -340,7 +344,17 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
         previous_approval = @estimate.approved_at
 
         freeze_time do
-          patch public_send("#{action}_job_estimate_url", @job)
+          assert_difference("Activity.count", initial_status == target_status ? 0 : 1) do
+            patch public_send("#{action}_job_estimate_url", @job)
+          end
+
+          if initial_status != target_status
+            activity = @job.activities.newest_first.first
+            assert_equal "estimate_status_changed", activity.event
+            assert_equal @user, activity.actor
+            assert_equal({ "estimate_id" => @estimate.id, "previous_status" => initial_status,
+                           "new_status" => target_status }, activity.metadata)
+          end
 
           assert_response :see_other
           assert_redirected_to job_estimate_url(@job)
@@ -392,7 +406,9 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     other_estimate = other_job.create_estimate!
 
     %i[mark_sent approve reject].each do |action|
-      patch public_send("#{action}_job_estimate_url", other_job)
+      assert_no_difference("Activity.count") do
+        patch public_send("#{action}_job_estimate_url", other_job)
+      end
 
       assert_response :not_found
       assert_equal "draft", other_estimate.reload.status
@@ -422,9 +438,11 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "generic update cannot change lifecycle fields" do
-    patch job_estimate_url(@job), params: {
-      estimate: { notes: "Updated notes", status: "approved", approved_at: "2000-01-01" }
-    }
+    assert_no_difference("Activity.count") do
+      patch job_estimate_url(@job), params: {
+        estimate: { notes: "Updated notes", status: "approved", approved_at: "2000-01-01" }
+      }
+    end
 
     assert_redirected_to job_estimate_url(@job)
     assert_equal "draft", @estimate.reload.status
