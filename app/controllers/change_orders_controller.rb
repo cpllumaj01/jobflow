@@ -19,12 +19,14 @@ class ChangeOrdersController < ApplicationController
     @change_order = @job.change_orders.new(change_order_params)
 
     saved = ChangeOrder.transaction do
-      @change_order.save.tap do |success|
-        if success
-          @job.activities.create!(actor: Current.user, event: "change_order_created",
-            metadata: { change_order_id: @change_order.id, title: @change_order.title, new_status: @change_order.status })
-        end
+      success = @change_order.save
+
+      if success
+        @job.activities.create!(actor: Current.user, event: "change_order_created",
+          metadata: { change_order_id: @change_order.id, title: @change_order.title, new_status: @change_order.status })
       end
+
+      success
     end
 
     if saved
