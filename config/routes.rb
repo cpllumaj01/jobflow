@@ -22,6 +22,7 @@ Rails.application.routes.draw do
   end
   resource :session
   resource :two_factor_challenge, only: %i[new create destroy]
+  resource :account, only: :show
   resource :account_security, controller: "account_security", only: :show do
     post :setup
     patch :enable

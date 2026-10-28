@@ -45,6 +45,7 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
 
       paths = [
         root_path,
+        account_path, account_security_path,
         new_customer_path, edit_customer_path(@customer), customer_path(@customer),
         new_job_path, edit_job_path(@job), job_path(@job),
         new_job_estimate_path(@unpriced_job), job_estimate_path(@job), edit_job_estimate_path(@job),
