@@ -26,7 +26,7 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     get account_security_path
     assert_response :success
     assert_select "h1", "Account security"
-    assert_select "a[href=?]", account_security_path, text: "Account security"
+    assert_select "a[href=?]", account_path, text: "Account"
     assert_includes response.headers["Cache-Control"], "no-store"
     assert_select 'meta[name="turbo-cache-control"][content="no-cache"]'
     assert_equal "same-origin", response.headers["Referrer-Policy"]
@@ -51,7 +51,7 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     refute_includes ciphertext, secret
     refute_includes @user.inspect, secret
     assert_includes response.body, secret
-    assert_includes response.body, "otpauth://totp/JobFlow:"
+    assert_setup_credentials(secret)
     refute_includes cookies[rails_cookie_key], secret
     assert_not @user.reload.two_factor_enabled?
     assert_nil @user.otp_secret
@@ -62,6 +62,8 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     patch enable_account_security_path, params: { verification_code: "invalid" }
     assert_response :unprocessable_entity
     assert_not @user.reload.two_factor_enabled?
+    assert_setup_credentials(secret)
+    assert_select 'ul[aria-label="Recovery codes"]', count: 0
 
     old_setup_cookie = cookies[rails_cookie_key]
     post setup_account_security_path, params: { password: "password" }
@@ -96,6 +98,12 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     patch enable_account_security_path, params: { verification_code: ROTP::TOTP.new(secret).now,
       user_id: users(:two).id, otp_secret: "untrusted", recovery_code_digests: [ "untrusted" ] }
     assert_response :success
+    assert_select "h1", "Two-factor authentication is enabled"
+    assert_select "h2", text: /Recovery codes.*\(optional\)/
+    assert_select "button", text: "Copy"
+    assert_select "button", text: "Download"
+    assert_select "a[href=?]", root_path, text: "Continue to JobFlow"
+    assert_select "a[href=?]", account_path, text: "Skip for now"
     codes = css_select('ul[aria-label="Recovery codes"] li').map(&:text)
     assert_equal 10, codes.size
     assert @user.reload.two_factor_enabled?
@@ -110,6 +118,12 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     refute_includes response.body, secret
     assert_includes response.headers["Cache-Control"], "no-store"
     codes.each { |code| refute_includes request.session.to_hash.to_json, code }
+
+    get account_path
+    assert_response :success
+    assert_select "a[href=?]", account_security_path, text: "Manage two-factor authentication"
+    codes.each { |code| refute_includes response.body, code }
+    assert @user.reload.two_factor_enabled?
 
     other_browser.get jobs_path
     other_browser.assert_redirected_to new_session_path
@@ -185,6 +199,9 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     assert_not Session.exists?(extra_session.id)
     codes.each { |code| assert_not @user.consume_two_factor!(code) }
     assert_equal other_state, users(:two).reload.attributes
+    replacement.each { |code| refute_includes request.session.to_hash.to_json, code }
+    get account_security_path
+    replacement.each { |code| refute_includes response.body, code }
 
     previous_cookie = cookies[:session_id]
     extra_session = @user.sessions.create!
@@ -360,6 +377,17 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+    def assert_setup_credentials(secret)
+      assert_select 'details [aria-label="Setup key"]', secret
+      image = css_select('img[alt="Scan this QR code with your authenticator app"]').sole
+      assert image["src"].start_with?("data:image/svg+xml;base64,")
+      svg = Base64.strict_decode64(image["src"].split(",", 2).last)
+      expected = RQRCode::QRCode.new(@user.two_factor_provisioning_uri(secret)).as_svg(viewbox: true, module_size: 4, offset: 16)
+      assert_equal expected, svg
+      assert_select 'a[href^="otpauth:"]', count: 0
+      assert_select 'input[name=verification_code][pattern="[0-9]{6}"][autocomplete=one-time-code]'
+    end
+
     def form_token(path)
       css_select("form[action='#{path}'] input[name='authenticity_token']").first["value"]
     end
