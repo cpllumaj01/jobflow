@@ -12,7 +12,7 @@ namespace :demo do
       abort "Supply DEMO_PASSWORD with 16–72 bytes via the runtime secret environment."
     end
 
-    DemoData.populate!(password: password)
-    puts "Demo bootstrap complete for #{DemoData::EMAIL}: 4 customers, 6 jobs, 6 estimates, 4 change orders, 1 attachment."
+    user = DemoData.populate!(password: password, pagination: ENV["SEED_PAGINATION"] == "true")
+    puts "Demo bootstrap complete for #{DemoData::EMAIL}: #{user.customers.count} customers, #{user.jobs.count} jobs, 6 estimates, 4 change orders, 1 attachment."
   end
 end

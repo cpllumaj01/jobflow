@@ -36,12 +36,12 @@ class DemoDataTest < ActiveSupport::TestCase
     original_user_ids = User.ids.sort
     ENV["ALLOW_PRODUCTION_DEMO_BOOTSTRAP"] = "true"
     ENV["DEMO_PASSWORD"] = "local-test-demo-password"
-    ENV["SEED_PAGINATION"] = "true"
 
     2.times do
       in_production do
         output, = capture_io { invoke_bootstrap }
         refute_includes output, ENV["DEMO_PASSWORD"]
+        assert_includes output, "4 customers, 6 jobs"
       end
 
       demo = User.find_by!(email_address: DemoData::EMAIL)
@@ -164,28 +164,39 @@ class DemoDataTest < ActiveSupport::TestCase
     end
   end
 
-  test "pagination option is rejected outside development before replacing demo data" do
-    demo = DemoData.populate!(password: "original-demo-password")
-    original_digest = demo.password_digest
-    original_customers = demo.customers.ids.sort
-    original_jobs = demo.jobs.ids.sort
-    original_env = Rails.env
+  test "production pagination bootstrap is repeatable and preserves other users" do
+    unrelated_records = [ users(:one), customers(:johnson), jobs(:kitchen_renovation) ]
+    original_attributes = unrelated_records.map(&:attributes)
+    ENV["ALLOW_PRODUCTION_DEMO_BOOTSTRAP"] = "true"
+    ENV["DEMO_PASSWORD"] = "production-demo-password"
+    ENV["SEED_PAGINATION"] = "true"
 
-    begin
-      %w[test staging production].each do |environment|
-        Rails.env = environment
-        assert_no_difference [ "User.count", "Customer.count", "Job.count" ] do
-          error = assert_raises(ArgumentError) do
-            DemoData.populate!(password: "replacement-demo-password", pagination: true)
-          end
-          assert_match(/development-only/, error.message)
-        end
-        assert_equal original_digest, demo.reload.password_digest
-        assert_equal original_customers, demo.customers.ids.sort
-        assert_equal original_jobs, demo.jobs.ids.sort
+    in_production do
+      2.times do
+        output, = capture_io { invoke_bootstrap }
+        assert_includes output, "46 customers, 48 jobs"
+        refute_includes output, ENV["DEMO_PASSWORD"]
+        demo = User.find_by!(email_address: DemoData::EMAIL)
+        assert demo.authenticate(ENV["DEMO_PASSWORD"])
+        assert_equal 46, demo.customers.count
+        assert_equal 48, demo.jobs.count
+        assert_equal Job::STATUSES.index_with { 8 }, demo.jobs.group(:status).count
+        assert_equal 6, Estimate.where(job_id: demo.jobs.select(:id)).count
+        kitchen = demo.jobs.find_by!(name: "Kitchen Renovation")
+        assert_equal 25_960, kitchen.current_contract_value
+        assert_equal 4, kitchen.change_orders.count
+        assert_equal 1, ActiveStorage::Attachment.where(record: demo.jobs).count
+        assert_includes kitchen.files.first.download, "Fictional project document"
+        assert_equal original_attributes, unrelated_records.map { |record| record.reload.attributes }
       end
-    ensure
-      Rails.env = original_env
+
+      [ nil, "false", "1", "TRUE" ].each do |opt_in|
+        ENV["SEED_PAGINATION"] = opt_in
+        capture_io { invoke_bootstrap }
+        demo = User.find_by!(email_address: DemoData::EMAIL)
+        assert_equal 4, demo.customers.count
+        assert_equal 6, demo.jobs.count
+      end
     end
   end
 

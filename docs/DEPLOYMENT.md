@@ -80,6 +80,14 @@ Deploy the code and prepare the production database normally first. Normal produ
 
 The shared loader creates four fictional customers, six jobs covering every job status, six estimates, four kitchen change orders covering every change-order status, and one text attachment. Reruns replace this same account's dataset rather than adding duplicates. Record IDs change, and dates remain relative to the day of the refresh, as with local seeds. The account itself is retained.
 
+To load the same larger dataset used for development pagination testing, add `SEED_PAGINATION=true` to the command above:
+
+```sh
+RAILS_ENV=production ALLOW_PRODUCTION_DEMO_BOOTSTRAP=true SEED_PAGINATION=true bin/rails demo:bootstrap
+```
+
+This creates 46 customers and 48 jobs, retaining the six estimates, four change orders, and one attachment from the normal samples. It requires the same `DEMO_PASSWORD` and replaces only the demo account's data. Only the exact value `true` enables the larger dataset. Rerunning without `SEED_PAGINATION=true` restores the normal four customers and six jobs.
+
 The task rejects non-production environments, an opt-in other than `true`, and missing or unsuitable passwords before modifying records. A database transaction protects the replacement, and a PostgreSQL transaction advisory lock serializes concurrent loader runs. Database errors before commit roll back the password and replacement together. Active Storage uploads occur after commit and cannot be atomic with PostgreSQL: if a disk/upload failure occurs, correct storage and rerun the task. Replaced attachments use Active Storage's normal asynchronous purge lifecycle; keep the existing job worker running for cleanup. No unrelated blobs are globally purged by the task.
 
 Local verification uses Rails transactional fixtures and a temporary test Disk directory, with production environment checks simulated only around task invocation. It exercises two refreshes with attachment upload callbacks, attachment downloads, password authentication, unrelated-user preservation, guard rejection, and rollback on a mid-refresh failure; it does not contact a deployed database.
