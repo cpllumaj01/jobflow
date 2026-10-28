@@ -5,7 +5,6 @@ module DemoData
 
   def self.populate!(password:, pagination: false)
     raise ArgumentError, "Demo password must be present." if password.blank?
-    raise ArgumentError, "Pagination demo data is development-only." if pagination && !Rails.env.development?
 
     User.transaction do
       # Serialize refreshes, including concurrent first-time account creation.
@@ -348,7 +347,7 @@ module DemoData
             email: "#{surname.downcase}@example.com",
             phone: format("203-555-%04d", 100 + index),
             address: address,
-            notes: "Fictional customer for development pagination testing."
+            notes: "Fictional customer for pagination testing."
           )
           status = Job::STATUSES[index % Job::STATUSES.length]
           customer.jobs.create!(
