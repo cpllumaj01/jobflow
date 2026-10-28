@@ -45,7 +45,8 @@ class TwoFactorChallengesController < ApplicationController
   private
     def prevent_caching
       no_store
-      response.set_header("Referrer-Policy", "no-referrer")
+      # Native forms need a same-origin Origin header for Rails CSRF checks.
+      response.set_header("Referrer-Policy", "same-origin")
     end
 
     def set_pending_user

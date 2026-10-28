@@ -81,7 +81,8 @@ class AccountSecurityController < ApplicationController
 
     def prevent_caching
       no_store
-      response.set_header("Referrer-Policy", "no-referrer")
+      # Native forms need a same-origin Origin header for Rails CSRF checks.
+      response.set_header("Referrer-Policy", "same-origin")
     end
 
     def lock_account

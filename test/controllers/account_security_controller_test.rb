@@ -14,6 +14,8 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
     patch enable_account_security_path, params: { verification_code: "123456" }
     assert_redirected_to new_session_path
+    delete cancel_setup_account_security_path
+    assert_redirected_to new_session_path
     post recovery_codes_account_security_path, params: { password: "password", verification_code: "123456" }
     assert_redirected_to new_session_path
     delete two_factor_account_security_path, params: { password: "password", verification_code: "123456" }
@@ -27,7 +29,7 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", account_security_path, text: "Account security"
     assert_includes response.headers["Cache-Control"], "no-store"
     assert_select 'meta[name="turbo-cache-control"][content="no-cache"]'
-    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_equal "same-origin", response.headers["Referrer-Policy"]
   end
 
   test "setup rejects incorrect and malformed passwords" do
@@ -132,6 +134,13 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
       assert_redirected_to account_security_path
       assert_nil request.session[:two_factor_setup]
       assert_not @user.reload.two_factor_enabled?
+      assert_equal "Authenticator setup expired. Start setup again.", flash[:alert]
+
+      start_setup
+      replacement_secret = @user.reload.otp_setup_secret
+      patch enable_account_security_path, params: { verification_code: ROTP::TOTP.new(replacement_secret).now }
+      assert_response :success
+      assert @user.reload.two_factor_enabled?
     end
   end
 
@@ -227,9 +236,32 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
     post setup_account_security_path, params: { password: "password", authenticity_token: form_token(setup_account_security_path) }
     assert_response :success
     secret = @user.reload.otp_setup_secret
-    patch enable_account_security_path, params: { verification_code: ROTP::TOTP.new(secret).now, authenticity_token: form_token(enable_account_security_path) }
+    post enable_account_security_path, params: { _method: "patch", verification_code: "invalid",
+      authenticity_token: form_token(enable_account_security_path) }, headers: { "Origin" => request.base_url }
+    assert_response :unprocessable_entity
+    assert_select "main", text: /Enter a valid authenticator code\./
+    assert_not @user.reload.two_factor_enabled?
+    assert_equal secret, @user.otp_setup_secret
+    assert_empty @user.recovery_code_digests
+    assert request.session[:two_factor_setup]
+
+    setup_cookie = cookies[rails_cookie_key]
+    enable_token = form_token(enable_account_security_path)
+    verification_code = ROTP::TOTP.new(secret).now
+    post enable_account_security_path, params: { _method: "patch", verification_code: verification_code,
+      authenticity_token: enable_token }, headers: { "Origin" => request.base_url }
     assert_response :success
     codes = css_select('ul[aria-label="Recovery codes"] li').map(&:text)
+    assert_equal 10, codes.uniq.size
+    digests = @user.reload.recovery_code_digests
+
+    cookies[rails_cookie_key] = setup_cookie
+    post enable_account_security_path, params: { _method: "patch", verification_code: verification_code,
+      authenticity_token: enable_token }, headers: { "Origin" => request.base_url }
+    assert_redirected_to account_security_path
+    assert_equal digests, @user.reload.recovery_code_digests
+    assert_equal 1, @user.sessions.count
+    assert_select 'ul[aria-label="Recovery codes"]', count: 0
 
     get account_security_path
     post recovery_codes_account_security_path, params: { password: "password", verification_code: codes.first,
@@ -241,6 +273,66 @@ class AccountSecurityControllerTest < ActionDispatch::IntegrationTest
       authenticity_token: form_token(two_factor_account_security_path) }
     assert_redirected_to account_security_path
     assert_not @user.reload.two_factor_enabled?
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
+  test "rendered cancellation clears setup state and rejects a restored setup cookie" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    get account_security_path
+    post setup_account_security_path, params: { password: "password", authenticity_token: form_token(setup_account_security_path) }
+    assert_response :success
+    secret = @user.reload.otp_setup_secret
+    setup_cookie = cookies[rails_cookie_key]
+    enable_token = form_token(enable_account_security_path)
+
+    post cancel_setup_account_security_path, params: { _method: "delete",
+      authenticity_token: form_token(cancel_setup_account_security_path) }, headers: { "Origin" => request.base_url }
+    assert_response :see_other
+    assert_redirected_to account_security_path
+    assert_nil request.session[:two_factor_setup]
+    assert_nil @user.reload.otp_setup_secret
+    assert_not @user.two_factor_enabled?
+
+    cookies[rails_cookie_key] = setup_cookie
+    post enable_account_security_path, params: { _method: "patch", verification_code: ROTP::TOTP.new(secret).now,
+      authenticity_token: enable_token }, headers: { "Origin" => request.base_url }
+    assert_redirected_to account_security_path
+    assert_nil request.session[:two_factor_setup]
+    assert_not @user.reload.two_factor_enabled?
+    assert_empty @user.recovery_code_digests
+    follow_redirect!
+    assert_select "main", text: /Authenticator setup expired\. Start setup again\./
+    assert_select "form[action=?] input[name=password]", setup_account_security_path
+    refute_includes response.body, secret
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
+  test "verification and cancellation reject invalid CSRF tokens and origins without changing setup" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    get account_security_path
+    post setup_account_security_path, params: { password: "password", authenticity_token: form_token(setup_account_security_path) }
+    assert_response :success
+    secret = @user.reload.otp_setup_secret
+    pending = request.session[:two_factor_setup].deep_stringify_keys
+    origin = request.base_url
+    forms = { enable_account_security_path => [ "patch", form_token(enable_account_security_path) ],
+      cancel_setup_account_security_path => [ "delete", form_token(cancel_setup_account_security_path) ] }
+
+    forms.each do |path, (method, token)|
+      [ [ nil, origin ], [ "invalid", origin ], [ token, "null" ], [ token, "https://attacker.example" ] ].each do |csrf_token, request_origin|
+        post path, params: { _method: method, authenticity_token: csrf_token, verification_code: ROTP::TOTP.new(secret).now },
+          headers: { "Origin" => request_origin }
+        assert_response :unprocessable_entity
+        assert_equal secret, @user.reload.otp_setup_secret
+        assert_not @user.two_factor_enabled?
+        assert_empty @user.recovery_code_digests
+        assert_equal pending, request.session[:two_factor_setup]
+      end
+    end
   ensure
     ActionController::Base.allow_forgery_protection = previous
   end
