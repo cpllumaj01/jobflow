@@ -8,11 +8,13 @@ class JobAttachmentsController < ApplicationController
   end
 
   def create
-    uploads = Array(params.dig(:job, :files)).reject(&:blank?)
+    job_params = params[:job]
+    files = job_params[:files] if job_params.is_a?(ActionController::Parameters)
+    uploads = (files.is_a?(Array) ? files : [ files ]).reject(&:blank?)
 
     if uploads.empty? || uploads.any? { |file| !file.is_a?(ActionDispatch::Http::UploadedFile) }
       @job.errors.add(:files, "must include at least one uploaded file")
-    else
+    elsif @job.valid_file_uploads?(uploads)
       @job.with_lock do
         existing_ids = @job.files.ids
         if @job.files.attach(uploads)
