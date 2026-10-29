@@ -1,7 +1,7 @@
 <% content_for :title, "Create your JobFlow account | JobFlow" %>
 
 <div class="mx-auto w-full max-w-md">
-  <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+  <div class="rounded-xl border border-slate-300 bg-white p-6 shadow-sm sm:p-8">
     <h1 class="text-2xl font-bold tracking-tight text-slate-950">Create your JobFlow account</h1>
     <p class="mt-2 text-sm text-slate-600">Keep your customers, jobs, and project details in one place.</p>
 
@@ -19,7 +19,7 @@
     <%= form_with model: @user, url: sign_up_path, class: "mt-6 space-y-5" do |form| %>
       <div>
         <%= form.label :email_address, "Email address", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
+        <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", class: "mt-2 block w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-500" %>
       </div>
       <div>
         <%= render "shared/password_field", form: form, field: :password, label: "Password", autocomplete: "new-password", options: { minlength: 15, "aria-describedby": "password-requirements" } %>

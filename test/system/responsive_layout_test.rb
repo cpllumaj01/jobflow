@@ -5,7 +5,7 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
     @customer = customers(:johnson)
     @job = jobs(:kitchen_renovation)
     @change_order = change_orders(:kitchen_lighting)
-    @customer.update!(name: "Johnson Residence and Workshop", email: "#{'longaddress' * 5}@example.com")
+    @customer.update!(name: "Johnson Residence and Workshop", contact_name: "Sarah Johnson, property management and renovations", email: "#{'longaddress' * 5}@example.com")
     @job.update!(name: "Kitchen renovation and workshop improvements", description: "Project details #{'unbroken' * 30}")
     @unpriced_job = @customer.jobs.create!(name: "Job awaiting an estimate")
     @job.files.attach(io: StringIO.new("Project scope"), filename: "project-scope-#{'long' * 15}.txt", content_type: "text/plain")
@@ -35,7 +35,29 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
         click_on "Customers"
       end
       assert_current_path customers_path
-      assert_scrollable_table "Customers", width
+      if width < 768
+        assert_no_selector "[role=region][aria-label='Customers']"
+        within "ul[aria-label='Customers']" do
+          assert_selector "li", count: 1
+          assert_selector "h2", text: @customer.name
+          assert_selector "dt", text: "Contact", exact_text: true
+          assert_selector "dd", text: @customer.contact_name
+          assert_selector "dt", text: "Email", exact_text: true
+          assert_selector "dd", text: @customer.email
+          assert_selector "p", text: @customer.address
+          assert_link "View #{@customer.name}", href: customer_path(@customer)
+          clipped = all("h2, p, dt, dd").filter_map do |element|
+            element.text if element.evaluate_script("this.scrollWidth > this.clientWidth")
+          end
+          assert_empty clipped, "Customer details must wrap within the mobile record"
+        end
+        assert_layout_fits(width, current_path)
+        click_on "View #{@customer.name}"
+        assert_current_path customer_path(@customer)
+      else
+        assert_no_selector "ul[aria-label='Customers']"
+        assert_scrollable_table "Customers", width
+      end
       click_on "Menu" if width < 768
       within "nav[aria-label='Main navigation']" do
         click_on "Jobs", exact: true

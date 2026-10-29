@@ -25,7 +25,7 @@
     <%= form.label :q, "Search jobs", class: "block text-sm font-medium text-slate-700" %>
     <%= form.search_field :q, value: @query, placeholder: "Job name, address, or customer",
         data: { action: "input->job-filters#search" },
-        class: "mt-1 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-400 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        class: "mt-1 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-500 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div class="w-full sm:w-auto">
@@ -34,7 +34,7 @@
     <% status_options << ["Unknown status: #{@status}", @status] if @status.present? && !Job::STATUSES.include?(@status) %>
     <%= form.select :status, status_options, { include_blank: "All statuses", selected: @status },
         data: { action: "change->job-filters#submit" },
-        class: "mt-1 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-400 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
+        class: "mt-1 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-500 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
   </div>
 
   <%= form.submit "Filter jobs", class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
@@ -42,11 +42,11 @@
 <% end %>
 
 <%= turbo_frame_tag "jobs_results", target: "_top", data: { turbo_action: "replace" } do %>
-  <div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+  <div class="mt-8 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
     <% if @jobs.any? %>
       <div class="overflow-x-auto" role="region" aria-label="Jobs" tabindex="0">
         <table class="w-full min-w-160 text-left text-sm">
-          <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <thead class="border-b border-slate-300 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600">
             <tr>
               <th class="min-w-48 px-6 py-3 whitespace-nowrap">Job</th>
               <th class="min-w-48 px-6 py-3 whitespace-nowrap">Customer</th>
@@ -55,7 +55,7 @@
             </tr>
           </thead>
 
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-slate-200">
             <% @jobs.each do |job| %>
               <tr class="hover:bg-slate-50">
                 <td class="px-6 py-4">
