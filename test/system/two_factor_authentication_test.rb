@@ -57,6 +57,7 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
     open_account_security
     assert_selector "h1", text: "Account security"
     fill_in "Current password", with: "password"
+    assert_password_visibility
     click_on "Set up two-factor authentication"
     assert_text "Set up your authenticator"
     qr = find('img[alt="Scan this QR code with your authenticator app"]')
@@ -98,6 +99,7 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
     assert_fits_phone
     within "form[action='#{recovery_codes_account_security_path}']" do
       fill_in "Current password", with: "password"
+      assert_password_visibility
       fill_in "Authenticator or recovery code", with: codes.last
       click_on "Regenerate recovery codes"
     end
@@ -110,6 +112,7 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
     click_on "Manage two-factor authentication"
     within "form[action='#{two_factor_account_security_path}']" do
       fill_in "Current password", with: "password"
+      assert_password_visibility
       fill_in "Authenticator or recovery code", with: replacement.first
       click_on "Disable 2FA"
     end
@@ -166,6 +169,7 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
     assert_link "Manage two-factor authentication"
     assert_no_selector 'ul[aria-label="Recovery codes"]'
   ensure
+    page.execute_script("delete navigator.clipboard.writeText")
     page.driver.browser.execute_cdp("Browser.resetPermissions")
     page.driver.browser.execute_cdp("Browser.setDownloadBehavior", behavior: "default")
     FileUtils.remove_entry(download_directory) if download_directory
@@ -179,6 +183,23 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
       assert_selector "h1", text: "Account", exact_text: true
       assert_text users(:one).email_address
       click_on users(:one).reload.two_factor_enabled? ? "Manage two-factor authentication" : "Enable two-factor authentication"
+    end
+
+    def assert_password_visibility
+      field = find_field("Current password")
+      assert_equal "password", field["type"]
+      button = find_button("Show current password")
+      size = button.evaluate_script("[this.getBoundingClientRect().width, this.getBoundingClientRect().height]")
+      assert_operator size[0], :>=, 44
+      assert_operator size[1], :>=, 44
+      button.click
+      assert_selector 'input[type="text"][autocomplete="current-password"]'
+      assert_equal "password", field.value
+      find_button("Hide current password").send_keys(:space)
+      assert_selector 'input[type="password"][autocomplete="current-password"]'
+      find_button("Show current password").send_keys(:enter)
+      assert_selector 'input[type="text"][autocomplete="current-password"]'
+      assert_equal "password", field.value
     end
 
     def assert_fits_phone
