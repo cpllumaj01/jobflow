@@ -116,6 +116,16 @@ Otherwise: inspect, implement, verify, self-review, and report.
 - For genuinely generic or extensible data, avoid making rendering enumerate every event type, resource type, or metadata field. Handle unknown or missing values safely and escape arbitrary content; this is not a requirement to make every feature metadata-driven.
 - Prefer semantic HTML and native browser behavior before adding custom JavaScript.
 
+### UI/UX
+
+- Consider functional correctness, usability, visual polish, and responsive behavior together during initial implementation. Before completion, evaluate whether the interface is intuitive, visually balanced, and appropriate for the task.
+- Choose interaction patterns and control sizes appropriate to the action, its frequency, and its complexity. Keep common actions discoverable and workflows concise; avoid bulky forms, redundant actions, excessive clicks, confusing labels, and unnecessarily persistent controls.
+- Maintain professional SaaS styling through consistent spacing, typography, alignment, color, borders, contrast, and component sizing. Prioritize important information and distinguish primary from secondary actions; avoid excessive whitespace, overcrowding, and unnecessary nested cards or borders.
+- Reflect the true current state in controls and provide useful feedback for loading, success, errors, disabled, empty, and selected states as applicable. Avoid conflicting defaults or ambiguous selections.
+- Use meaningful labels, clear validation, usable touch targets, and accessible interaction patterns. Preserve keyboard navigation and visible focus indicators; manage focus appropriately when interactions change the interface.
+- Make layouts work naturally across desktop, tablet, and varied mobile widths. Check for clipping, overlap, overflow, awkward wrapping, overcrowding, and unnecessarily large components. Adapt the presentation to the available space; do not conceal layout problems with global overflow suppression or disable browser zoom.
+- For meaningful UI changes, inspect the rendered interface at representative viewport sizes with realistic content, including long values, empty states, and validation errors where relevant. Verify interaction flow and keyboard/focus behavior alongside automated tests. Use available browser inspection or screenshots, and distinguish emulated checks from physical-device checks when reporting verification.
+
 ### Stimulus
 
 When Stimulus is appropriate or explicitly requested:
