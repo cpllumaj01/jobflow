@@ -26,7 +26,7 @@
           <%= form.label :verification_code, "Authenticator or recovery code", for: "regeneration_code", class: "block text-sm font-medium text-slate-700" %>
           <%= form.text_field :verification_code, id: "regeneration_code", required: true, autocomplete: "one-time-code", spellcheck: false, autocapitalize: "none", class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
         </div>
-        <%= form.submit "Regenerate recovery codes", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+        <%= form.button "Regenerate recovery codes", type: "submit", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
       <% end %>
 
       <h3 class="mt-8 border-t border-slate-200 pt-6 font-semibold text-slate-900">Disable two-factor authentication</h3>
@@ -49,7 +49,7 @@
         <div>
           <%= render "shared/password_field", form: form, field: :password, label: "Current password", autocomplete: "current-password", options: { id: "setup_password", maxlength: 72 } %>
         </div>
-        <%= form.submit "Set up two-factor authentication", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+        <%= form.button "Set up two-factor authentication", type: "submit", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
       <% end %>
     <% end %>
   </div>

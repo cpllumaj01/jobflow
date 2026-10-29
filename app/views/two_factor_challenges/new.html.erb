@@ -13,5 +13,5 @@
     </div>
     <%= form.submit "Verify sign-in", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
   <% end %>
-  <%= button_to "Cancel sign-in", two_factor_challenge_path, method: :delete, data: { turbo: false }, class: "mt-4 cursor-pointer text-sm font-semibold text-slate-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+  <%= button_to "Cancel sign-in", two_factor_challenge_path, method: :delete, data: { turbo: false }, class: "mt-4 min-h-11 cursor-pointer text-sm font-semibold text-slate-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
 </div>

@@ -251,7 +251,7 @@ class PaginationTest < ApplicationSystemTestCase
       users(:one).customers.create!(name: "Paged customer #{index}")
     end
 
-    [ 375, 768, 1400 ].each do |width|
+    [ 320, 375, 390, 430, 768, 1400 ].each do |width|
       page.driver.browser.execute_cdp("Emulation.setDeviceMetricsOverride",
         width: width, height: 1000, deviceScaleFactor: 1, mobile: false)
 

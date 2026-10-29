@@ -61,7 +61,7 @@ Use disposable accounts on a non-production HTTPS origin for the following check
 4. On account security, autofill the current password for setup, regeneration, and disabling. Verify no saved password fills an authenticator/recovery-code field and that second-factor verification is still required.
 5. Test the configured extension password manager separately if one was involved in the original report. Inspect any stale/mislabeled saved entry in the isolated profile and record differences before changing it.
 
-### Safari on iPhone 14 (required; not verified here)
+### Safari on iOS (required; not verified here)
 
 1. Record the iOS/Safari version and enabled AutoFill provider. Save two disposable accounts with distinct emails/passwords. With Safari's keyboard Passwords/AutoFill UI, select each account from sign-in and verify that email and password always pair correctly. Repeat after reload, sign-out, and Back/Forward navigation.
 2. Register using Safari's strong-password suggestion. Confirm both new-password fields receive the intended password and saving associates it with the submitted email. Repeat with a manually entered passphrase and a confirmation mismatch; check that the error and email remain correct, then correct and submit.
