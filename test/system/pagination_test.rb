@@ -251,21 +251,33 @@ class PaginationTest < ApplicationSystemTestCase
       users(:one).customers.create!(name: "Paged customer #{index}")
     end
 
-    [ 375, 768, 1400 ].each do |width|
+    [ 320, 375, 390, 430, 768, 1400 ].each do |width|
       page.driver.browser.execute_cdp("Emulation.setDeviceMetricsOverride",
         width: width, height: 1000, deviceScaleFactor: 1, mobile: false)
 
       [ customers_path, jobs_path ].each do |path|
         visit path
+        list_label = path == customers_path ? "Customers" : "Jobs"
+        if width < 768
+          assert_selector "ul[aria-label='#{list_label}'] li", count: 25
+        end
         within "nav[aria-label='Pagination']" do
           assert_text "Page 1 of 2"
           assert_pagination_fits(width)
           click_on "Next"
+        end
+        if width < 768
+          assert_selector "ul[aria-label='#{list_label}'] li", count: 1
+        end
+        within "nav[aria-label='Pagination']" do
           assert_text "Page 2 of 2"
           assert_selector "span[aria-disabled='true']", text: "Next"
           assert_pagination_fits(width)
           click_on "Previous"
           assert_text "Page 1 of 2"
+        end
+        if width < 768
+          assert_selector "ul[aria-label='#{list_label}'] li", count: 25
         end
         assert_current_path "#{path}?page=1"
         assert_operator page.evaluate_script("document.documentElement.scrollWidth"), :<=, width

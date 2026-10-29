@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+/* Keep editable controls legible without triggering input-focus zoom on touch browsers,
+   including tablets and landscape viewports. Desktop control sizing stays unchanged. */
+@media (width < 40rem), (any-pointer: coarse) {
+  input:not([type="hidden"], [type="submit"], [type="button"], [type="checkbox"], [type="radio"]),
+  select,
+  textarea {
+    font-size: max(1rem, 16px);
+  }
+}

@@ -20,30 +20,40 @@
   </head>
 
   <body class="min-h-screen bg-slate-50 text-slate-900">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-7xl flex-col items-start gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <header class="border-b border-slate-300 bg-white" data-controller="navigation"
+        data-action="keydown.esc@window->navigation#escape focusout->navigation#dismiss resize@window->navigation#resize turbo:before-cache@document->navigation#close">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-4 sm:px-6">
         <%= link_to root_path, class: "text-xl font-bold tracking-tight text-slate-900 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" do %>
           JobFlow
         <% end %>
 
         <% if Current.user %>
-          <nav aria-label="Main navigation" class="flex w-full flex-wrap items-center justify-between gap-2 text-sm font-medium sm:w-auto sm:justify-start sm:gap-6">
-            <%= link_to "Dashboard", root_path,
-                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
+          <button type="button" hidden data-navigation-target="toggle" data-action="navigation#toggle"
+              aria-expanded="false" aria-controls="main-navigation"
+              class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:hidden">
+            <svg aria-hidden="true" focusable="false" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            Menu
+          </button>
+          <nav id="main-navigation" aria-label="Main navigation" data-navigation-target="panel"
+              class="flex w-full flex-col items-start gap-2 text-sm font-medium md:flex md:w-auto md:flex-row md:items-center md:gap-6">
+            <%= link_to "Dashboard", root_path, data: { navigation_target: "firstLink" },
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 md:min-h-0" %>
 
             <%= link_to "Customers", customers_path,
-                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 md:min-h-0" %>
 
             <%= link_to "Jobs", jobs_path,
-                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 md:min-h-0" %>
 
             <%= link_to "Account", account_path,
-                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
+                class: "text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 md:min-h-0" %>
 
             <%= button_to "Log out",
                 session_path,
                 method: :delete,
-                class: "cursor-pointer text-slate-600 hover:text-slate-950 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 sm:min-h-0" %>
+                class: "cursor-pointer text-slate-600 hover:text-slate-950 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 inline-flex min-h-11 items-center py-2 md:min-h-0" %>
           </nav>
         <% end %>
       </div>

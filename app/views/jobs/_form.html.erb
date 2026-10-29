@@ -22,7 +22,7 @@
         :id,
         :name,
         {},
-        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
+        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
   </div>
 
   <div>
@@ -30,7 +30,7 @@
         class: "block text-sm font-medium text-slate-700" %>
 
     <%= form.text_field :name,
-        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div>
@@ -39,7 +39,7 @@
 
     <%= form.textarea :description,
         rows: 5,
-        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div>
@@ -47,7 +47,7 @@
         class: "block text-sm font-medium text-slate-700" %>
 
     <%= form.text_field :address,
-        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div>
@@ -57,24 +57,24 @@
     <%= form.select :status,
         Job::STATUSES.map { |status| [status.humanize, status] },
         {},
-        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
+        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
   </div>
 
   <div class="grid gap-6 sm:grid-cols-2">
-    <div>
+    <div class="min-w-0">
       <%= form.label :start_date,
           class: "block text-sm font-medium text-slate-700" %>
 
       <%= form.date_field :start_date,
-          class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+          class: "mt-2 block min-w-0 w-full max-w-full appearance-none rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
     </div>
 
-    <div>
+    <div class="min-w-0">
       <%= form.label :estimated_completion_date,
           class: "block text-sm font-medium text-slate-700" %>
 
       <%= form.date_field :estimated_completion_date,
-          class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+          class: "mt-2 block min-w-0 w-full max-w-full appearance-none rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
     </div>
   </div>
 
@@ -83,7 +83,7 @@
         class: "block text-sm font-medium text-slate-700" %>
 
     <%= form.datetime_field :completed_at,
-        class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-400 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        class: "mt-2 block min-w-0 w-full max-w-full appearance-none rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
   <div class="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-6">

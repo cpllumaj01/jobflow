@@ -83,6 +83,7 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
     page.go_back
     assert_no_selector 'ul[aria-label="Recovery codes"] li', text: codes.first
     visit account_path
+    click_on "Menu"
     click_on "Log out"
 
     fill_in "Email address", with: users(:one).email_address
@@ -93,7 +94,7 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
     assert_fits_phone
     fill_in "Authenticator or recovery code", with: codes.first
     click_on "Verify sign-in"
-    assert_button "Log out"
+    assert_button "Menu"
     open_account_security
     assert_text "9 recovery codes remaining."
     assert_fits_phone
@@ -177,6 +178,7 @@ class TwoFactorAuthenticationTest < ApplicationSystemTestCase
 
   private
     def open_account_security
+      click_on "Menu" if page.evaluate_script("window.innerWidth < 768")
       within 'nav[aria-label="Main navigation"]' do
         click_on "Account", exact: true
       end

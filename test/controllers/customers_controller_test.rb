@@ -14,6 +14,25 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "body", text: /Johnson Residence/
     assert_select "body", text: /Fairfield Construction LLC/, count: 0
+    assert_select "ul[aria-label='Customers'] li", count: 1 do
+      assert_select "h2", @customer.name
+      assert_select "dd", @customer.contact_name
+      assert_select "dd", @customer.email
+      assert_select "a[href=?][aria-label=?]", customer_path(@customer), "View #{@customer.name}"
+    end
+  end
+
+  test "mobile customer records display placeholders for missing contact details" do
+    @customer.update!(contact_name: nil, email: nil, address: nil)
+
+    get customers_url
+
+    assert_response :success
+    assert_select "ul[aria-label='Customers'] li" do
+      assert_select "h2", @customer.name
+      assert_select "dd", text: "—", count: 2
+      assert_select "p", count: 0
+    end
   end
 
   test "pagination orders customers by name and breaks ties by id across pages" do

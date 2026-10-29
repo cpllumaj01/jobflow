@@ -14,6 +14,13 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "body", text: /Kitchen Renovation/
     assert_select "body", text: /Office Buildout/, count: 0
+    assert_select "ul[aria-label='Jobs'] li", count: 1 do
+      assert_select "h2", @job.name
+      assert_select "p", @job.address
+      assert_select "dd", @job.customer.name
+      assert_select "span", @job.status.humanize
+      assert_select "a[href=?][aria-label=?]", job_path(@job), "View #{@job.name}"
+    end
   end
 
   test "should get new" do

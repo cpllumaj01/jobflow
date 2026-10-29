@@ -42,7 +42,7 @@
   <% end %>
 
   <div class="mt-8 grid gap-6 lg:grid-cols-3">
-    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
+    <div class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
       <h2 class="text-lg font-semibold text-slate-950">
         Details
       </h2>
@@ -71,7 +71,7 @@
       </dl>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm sm:p-6">
       <h2 class="text-lg font-semibold text-slate-950">
         Status actions
       </h2>
@@ -101,7 +101,7 @@
     </div>
   </div>
 
-  <div class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+  <div class="mt-8 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
     <div class="border-b border-slate-200 px-6 py-5">
       <h2 class="text-lg font-semibold text-slate-950">
         Line items
@@ -111,7 +111,7 @@
     <% line_items_empty = @estimate.estimate_line_items.load.empty? %>
     <div class="overflow-x-auto" role="region" aria-label="Estimate line items" tabindex="0">
       <table class="w-full min-w-160 text-left text-sm">
-        <thead class="<%= "hidden" if line_items_empty %> border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <thead class="<%= "hidden" if line_items_empty %> border-b border-slate-300 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600">
           <tr>
             <th class="min-w-56 px-6 py-3 whitespace-nowrap">Description</th>
             <th class="px-6 py-3 whitespace-nowrap text-right">Quantity</th>
@@ -120,7 +120,7 @@
           </tr>
         </thead>
 
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-slate-200">
           <% if line_items_empty %>
             <tr>
               <td colspan="4" class="px-6 py-8 text-center">

@@ -3,7 +3,7 @@
   <meta name="turbo-cache-control" content="no-cache">
 <% end %>
 
-<div class="mx-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+<div class="mx-auto w-full max-w-xl rounded-xl border border-slate-300 bg-white p-6 shadow-sm sm:p-8">
   <h1 class="text-2xl font-bold tracking-tight text-slate-950">Set up your authenticator</h1>
   <p class="mt-2 text-sm text-slate-600">Scan this QR code with your authenticator app, then enter the six-digit code.</p>
   <%= authenticator_qr_code(Current.user.two_factor_provisioning_uri(@secret)) %>
@@ -17,9 +17,9 @@
   <%= form_with url: enable_account_security_path, method: :patch, data: { turbo: false }, class: "mt-6 space-y-5" do |form| %>
     <div>
       <%= form.label :verification_code, "Authenticator code", class: "block text-sm font-medium text-slate-700" %>
-      <%= form.text_field :verification_code, required: true, autofocus: true, inputmode: "numeric", pattern: "[0-9]{6}", maxlength: 6, autocomplete: "one-time-code", class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+      <%= form.text_field :verification_code, required: true, autofocus: true, inputmode: "numeric", pattern: "[0-9]{6}", maxlength: 6, autocomplete: "one-time-code", class: "mt-2 block w-full rounded-lg border border-slate-400 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
     </div>
-    <%= form.submit "Enable two-factor authentication", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+    <%= form.button "Enable two-factor authentication", type: "submit", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
   <% end %>
-  <%= button_to "Cancel setup", cancel_setup_account_security_path, method: :delete, data: { turbo: false }, class: "mt-4 cursor-pointer text-sm font-semibold text-slate-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+  <%= button_to "Cancel setup", cancel_setup_account_security_path, method: :delete, data: { turbo: false }, class: "mt-4 min-h-11 cursor-pointer text-sm font-semibold text-slate-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
 </div>
