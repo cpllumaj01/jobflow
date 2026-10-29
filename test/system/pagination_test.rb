@@ -257,16 +257,17 @@ class PaginationTest < ApplicationSystemTestCase
 
       [ customers_path, jobs_path ].each do |path|
         visit path
-        if path == customers_path && width < 768
-          assert_selector "ul[aria-label='Customers'] li", count: 25
+        list_label = path == customers_path ? "Customers" : "Jobs"
+        if width < 768
+          assert_selector "ul[aria-label='#{list_label}'] li", count: 25
         end
         within "nav[aria-label='Pagination']" do
           assert_text "Page 1 of 2"
           assert_pagination_fits(width)
           click_on "Next"
         end
-        if path == customers_path && width < 768
-          assert_selector "ul[aria-label='Customers'] li", count: 1
+        if width < 768
+          assert_selector "ul[aria-label='#{list_label}'] li", count: 1
         end
         within "nav[aria-label='Pagination']" do
           assert_text "Page 2 of 2"
@@ -275,8 +276,8 @@ class PaginationTest < ApplicationSystemTestCase
           click_on "Previous"
           assert_text "Page 1 of 2"
         end
-        if path == customers_path && width < 768
-          assert_selector "ul[aria-label='Customers'] li", count: 25
+        if width < 768
+          assert_selector "ul[aria-label='#{list_label}'] li", count: 25
         end
         assert_current_path "#{path}?page=1"
         assert_operator page.evaluate_script("document.documentElement.scrollWidth"), :<=, width

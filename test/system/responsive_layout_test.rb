@@ -6,7 +6,7 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
     @job = jobs(:kitchen_renovation)
     @change_order = change_orders(:kitchen_lighting)
     @customer.update!(name: "Johnson Residence and Workshop", contact_name: "Sarah Johnson, property management and renovations", email: "#{'longaddress' * 5}@example.com")
-    @job.update!(name: "Kitchen renovation and workshop improvements", description: "Project details #{'unbroken' * 30}")
+    @job.update!(name: "Kitchen renovation and workshop improvements", address: "123 Main Street, #{'building' * 15}", description: "Project details #{'unbroken' * 30}")
     @unpriced_job = @customer.jobs.create!(name: "Job awaiting an estimate")
     @job.files.attach(io: StringIO.new("Project scope"), filename: "project-scope-#{'long' * 15}.txt", content_type: "text/plain")
     @job.activities.create!(event: "attachment_added", actor: users(:one),
@@ -64,9 +64,28 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
       end
       assert_current_path jobs_path
       fill_in "Search jobs", with: "kitchen"
-      assert_selector "tbody tr", count: 1
-      assert_text @job.name
-      assert_scrollable_table "Jobs", width
+      if width < 768
+        assert_no_selector "[role=region][aria-label='Jobs']"
+        within "ul[aria-label='Jobs']" do
+          assert_selector "li", count: 1
+          assert_selector "h2", text: @job.name
+          assert_selector "p", text: @job.address
+          assert_selector "dt", text: "Customer", exact_text: true
+          assert_selector "dd", text: @customer.name
+          assert_selector "span", text: @job.status.humanize, exact_text: true
+          assert_link "View #{@job.name}", href: job_path(@job)
+          clipped = all("h2, p, dt, dd").filter_map do |element|
+            element.text if element.evaluate_script("this.scrollWidth > this.clientWidth")
+          end
+          assert_empty clipped, "Job details must wrap within the mobile record"
+        end
+        assert_layout_fits(width, current_path)
+      else
+        assert_no_selector "ul[aria-label='Jobs']"
+        assert_selector "tbody tr", count: 1
+        assert_text @job.name
+        assert_scrollable_table "Jobs", width
+      end
 
       paths = [
         root_path,
@@ -90,6 +109,44 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
       visit job_change_order_path(@job, @change_order)
       assert_scrollable_table "Change order line items", width
     end
+  end
+
+  test "job filters and record links work on a narrow mobile viewport" do
+    set_viewport(320)
+    visit jobs_path
+    assert_selector "ul[aria-label='Jobs'] li", count: 2
+    [ find_button("Filter jobs"), find_link("Reset filters") ].each do |control|
+      assert_operator control.evaluate_script("this.getBoundingClientRect().height"), :>=, 44
+    end
+
+    fill_in "Search jobs", with: "kitchen"
+    assert_selector "ul[aria-label='Jobs'] li", count: 1
+    assert_field "Search jobs", with: "kitchen", focused: true
+    select "Draft", from: "Status"
+    assert_text "No jobs match your filters"
+    assert_layout_fits(320, current_path)
+    select "In progress", from: "Status"
+    assert_selector "ul[aria-label='Jobs'] li", count: 1
+    click_on "Filter jobs"
+    assert_current_path jobs_path, ignore_query: true
+    assert_field "Search jobs", with: "kitchen"
+    assert_select "Status", selected: "In progress"
+    assert_selector "ul[aria-label='Jobs'] li", text: @job.name, count: 1
+    assert_layout_fits(320, current_path)
+
+    click_on "Reset filters"
+    assert_current_path jobs_path
+    assert_field "Search jobs", with: ""
+    assert_select "Status", selected: "All statuses"
+    assert_selector "ul[aria-label='Jobs'] li", count: 2
+    within find("ul[aria-label='Jobs'] li", text: @unpriced_job.name) do
+      assert_selector "dd", text: @customer.name
+      assert_no_selector "p"
+    end
+    assert_layout_fits(320, current_path)
+    click_on "View #{@job.name}"
+    assert_current_path job_path(@job)
+    assert_selector "h1", text: @job.name
   end
 
   test "line items can be added removed and saved on mobile and tablet viewports" do
