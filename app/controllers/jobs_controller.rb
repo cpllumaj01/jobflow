@@ -1,5 +1,5 @@
 class JobsController < ApplicationController
-  before_action :set_job, only: %i[show edit update destroy]
+  before_action :set_job, only: %i[show edit update update_status destroy]
   before_action :set_customers, only: %i[new edit create update]
 
   def index
@@ -53,22 +53,20 @@ class JobsController < ApplicationController
     attributes = job_params
     customer = Current.user.customers.find(attributes.delete(:customer_id))
 
-    updated = @job.with_lock do
-      success = @job.update(attributes.merge(customer: customer))
-
-      if success && @job.saved_change_to_status?
-        previous_status, new_status = @job.saved_change_to_status
-        @job.activities.create!(actor: Current.user, event: "job_status_changed",
-          metadata: { previous_status: previous_status, new_status: new_status })
-      end
-
-      success
-    end
-
-    if updated
+    if update_job(attributes.merge(customer: customer))
       redirect_to @job, notice: "Job was successfully updated."
     else
       render :edit, status: :unprocessable_entity
+    end
+  end
+
+  def update_status
+    if update_job(params.expect(job: [ :status ]))
+      redirect_to @job, notice: "Job status was successfully updated.", status: :see_other
+    else
+      flash.now[:alert] = @job.errors.full_messages.to_sentence
+      @job.reload
+      render :show, status: :unprocessable_entity
     end
   end
 
@@ -79,6 +77,25 @@ class JobsController < ApplicationController
   end
 
   private
+    def update_job(attributes)
+      @job.with_lock do
+        success = @job.update(attributes)
+
+        if success && @job.saved_change_to_status?
+          previous_status, new_status = @job.saved_change_to_status
+          metadata = { previous_status: previous_status, new_status: new_status }
+          metadata[:completed_at] = @job.completed_at.iso8601(6) if new_status == "completed"
+          previous_completed_at = @job.saved_change_to_completed_at&.first
+          if previous_status == "completed" && previous_completed_at
+            metadata[:previous_completed_at] = previous_completed_at.iso8601(6)
+          end
+          @job.activities.create!(actor: Current.user, event: "job_status_changed", metadata: metadata)
+        end
+
+        success
+      end
+    end
+
     def set_job
       @job = Current.user.jobs.find(params[:id])
     end
@@ -95,8 +112,7 @@ class JobsController < ApplicationController
         :address,
         :status,
         :start_date,
-        :estimated_completion_date,
-        :completed_at
+        :estimated_completion_date
       ])
     end
 end

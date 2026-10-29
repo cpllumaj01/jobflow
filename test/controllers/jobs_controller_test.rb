@@ -165,6 +165,181 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Kitchen Remodel", @job.reload.name
   end
 
+  test "quick status updates support every existing transition without duplicate history" do
+    freeze_time do
+      Job::STATUSES.each do |previous_status|
+        Job::STATUSES.each do |status|
+          @job.update!(status: previous_status)
+          previous_completion = @job.completed_at
+          assert_difference("Activity.count", status == previous_status ? 0 : 1) do
+            patch update_status_job_url(@job), params: { job: { status: status } }
+          end
+
+          assert_response :see_other
+          assert_redirected_to job_url(@job)
+          assert_equal status, @job.reload.status
+          if status == "completed"
+            assert_equal previous_completion || Time.current, @job.completed_at
+          else
+            assert_nil @job.completed_at
+          end
+          next if status == previous_status
+
+          activity = @job.activities.newest_first.first
+          assert_equal @user, activity.actor
+          assert_equal "job_status_changed", activity.event
+          expected = { "previous_status" => previous_status, "new_status" => status }
+          expected["completed_at"] = @job.completed_at.iso8601(6) if status == "completed"
+          expected["previous_completed_at"] = previous_completion.iso8601(6) if previous_status == "completed"
+          assert_equal expected, activity.metadata
+        end
+      end
+    end
+  end
+
+  test "completion reopening and recompletion preserve earlier history and use server time" do
+    Time.use_zone("America/New_York") do
+      freeze_time do
+        patch update_status_job_url(@job), params: { job: { status: "completed" } }
+        assert_equal Time.current, @job.reload.completed_at
+      end
+      first_completion = @job.completed_at
+      completion_event = @job.activities.sole
+      recorded_event = completion_event.attributes
+
+      travel 1.hour do
+        assert_no_difference("Activity.count") do
+          patch update_status_job_url(@job), params: { job: { status: "completed" } }
+        end
+        assert_equal first_completion, @job.reload.completed_at
+        patch update_status_job_url(@job), params: { job: { status: "in_progress" } }
+        assert_nil @job.reload.completed_at
+        assert_equal first_completion.iso8601(6), @job.activities.newest_first.first.metadata["previous_completed_at"]
+      end
+
+      travel 1.day do
+        patch update_status_job_url(@job), params: { job: { status: "completed" } }
+        assert_equal Time.current, @job.reload.completed_at
+        assert_operator @job.completed_at, :>, first_completion
+      end
+      assert_equal 3, @job.activities.count
+      assert_equal recorded_event, completion_event.reload.attributes
+      get job_url(@job)
+      assert_select "section[aria-labelledby='activity-heading']" do
+        assert_select "li", count: 3
+        assert_select "dt", text: "Completed at", count: 2
+        assert_select "dt", text: "Previous completed at", count: 1
+        assert_select "dd", text: first_completion.iso8601(6), count: 2
+      end
+    end
+  end
+
+  test "invalid quick status updates show validation errors and the persisted status" do
+    [ "unknown", "", nil ].each do |status|
+      assert_no_difference("Activity.count") do
+        patch update_status_job_url(@job), params: { job: { status: status } }
+      end
+      assert_response :unprocessable_entity
+      assert_equal "in_progress", @job.reload.status
+      assert_nil @job.completed_at
+      assert_select "main", text: /Status is not included in the list/
+      assert_select "select[name='job[status]'] option[selected]", text: "In progress"
+      assert_select "dt", text: "Completed", count: 0
+    end
+  end
+
+  test "quick status updates require a scalar status and authentication and ownership" do
+    [ {}, { job: { status: [ "completed" ] } }, { job: { status: { value: "completed" } } } ].each do |attributes|
+      assert_no_difference("Activity.count") { patch update_status_job_url(@job), params: attributes }
+      assert_response :bad_request
+    end
+    foreign_job = jobs(:office_buildout)
+    original = foreign_job.attributes
+    assert_no_difference("Activity.count") do
+      patch update_status_job_url(foreign_job), params: { job: { status: "completed" } }
+    end
+    assert_response :not_found
+    assert_equal original, foreign_job.reload.attributes
+
+    sign_out
+    assert_no_difference("Activity.count") do
+      patch update_status_job_url(@job), params: { job: { status: "completed" } }
+    end
+    assert_redirected_to new_session_url
+    assert_equal "in_progress", @job.reload.status
+  end
+
+  test "quick status updates ignore completion ownership and unrelated attributes" do
+    freeze_time do
+      patch update_status_job_url(@job), params: {
+        id: jobs(:office_buildout).id,
+        job: { status: "completed", completed_at: "2000-01-01", customer_id: customers(:fairfield).id,
+               name: "Forged name", actor_id: users(:two).id, metadata: { new_status: "forged" } }
+      }
+      assert_response :see_other
+      assert_equal "completed", @job.reload.status
+      assert_equal Time.current, @job.completed_at
+      assert_equal "Kitchen Renovation", @job.name
+      assert_equal customers(:johnson), @job.customer
+      assert_equal @user, @job.activities.sole.actor
+      assert_equal "quoted", jobs(:office_buildout).reload.status
+    end
+  end
+
+  test "creation and normal editing ignore manual actual completion timestamps" do
+    post jobs_url, params: { job: { name: "Planned work", customer_id: @job.customer_id,
+      estimated_completion_date: "2026-12-01", completed_at: "2000-01-01" } }
+    created = @user.jobs.find_by!(name: "Planned work")
+    assert_nil created.completed_at
+    assert_equal Date.new(2026, 12, 1), created.estimated_completion_date
+
+    freeze_time do
+      patch job_url(created), params: { job: { customer_id: created.customer_id,
+        status: "completed", completed_at: "2000-01-01" } }
+      assert_redirected_to job_url(created)
+      assert_equal Time.current, created.reload.completed_at
+      assert_equal Time.current.iso8601(6), created.activities.sole.metadata["completed_at"]
+      post jobs_url, params: { job: { name: "Finished work", customer_id: @job.customer_id,
+        status: "completed", completed_at: "2000-01-01" } }
+      assert_equal Time.current, @user.jobs.find_by!(name: "Finished work").completed_at
+    end
+    completed_at = created.completed_at
+    patch job_url(created), params: { job: { customer_id: created.customer_id, name: "Renamed", completed_at: nil } }
+    assert_redirected_to job_url(created)
+    assert_equal completed_at, created.reload.completed_at
+  end
+
+  test "new and edit forms keep estimated completion optional and omit actual completion" do
+    [ new_job_url, edit_job_url(@job) ].each do |url|
+      get url
+      assert_response :success
+      assert_select "[name='job[completed_at]']", count: 0
+      assert_select "label[for='job_estimated_completion_date']", text: "Estimated completion (optional)"
+      assert_select "input[type='date'][name='job[estimated_completion_date]']", count: 1
+      assert_select "input[name='job[estimated_completion_date]'][required]", count: 0
+    end
+  end
+
+  test "show offers status actions and only displays actual completion for completed jobs" do
+    Job::STATUSES.each do |status|
+      @job.update!(status: status)
+      get job_url(@job)
+      assert_response :success
+      assert_select "section[aria-labelledby='job-status-heading']" do
+        assert_select "form[action=?]", update_status_job_path(@job)
+        assert_select "select[name='job[status]'] option" do |options|
+          assert_equal Job::STATUSES, options.map { |option| option["value"] }
+        end
+        assert_select "button[type='submit']", text: "Complete job", count: %w[completed cancelled].include?(status) ? 0 : 1
+      end
+      assert_select "dt", text: "Completed", count: status == "completed" ? 1 : 0
+    end
+
+    @job.update_columns(status: "draft", completed_at: 1.day.ago)
+    assert_no_difference("Activity.count") { get job_url(@job) }
+    assert_select "dt", text: "Completed", count: 0
+  end
+
   test "cannot reassign job to another user's customer" do
     patch job_url(@job), params: {
       job: {

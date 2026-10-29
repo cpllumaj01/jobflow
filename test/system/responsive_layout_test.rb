@@ -315,19 +315,20 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
     assert_layout_fits(320, current_path)
     fill_in "Name", with: "Mobile job"
     find_field("Start date").set(Date.new(2026, 10, 29))
-    find_field("Estimated completion date").set(Date.new(2026, 11, 15))
-    find_field("Completed at").set(Time.zone.local(2026, 11, 15, 15, 30))
+    find_field("Estimated completion (optional)").set(Date.new(2026, 11, 15))
+    assert_no_field "Completed at"
     click_on "Create Job"
     assert_text "Job was successfully created."
     job = @customer.jobs.find_by!(name: "Mobile job")
     assert_equal Date.new(2026, 10, 29), job.start_date
     assert_equal Date.new(2026, 11, 15), job.estimated_completion_date
-    assert_equal Time.zone.local(2026, 11, 15, 15, 30), job.completed_at
+    assert_nil job.completed_at
     assert_layout_fits(320, current_path)
     click_on "Edit job"
-    assert_field "Estimated completion date", with: "2026-11-15"
+    assert_no_field "Completed at"
+    assert_field "Estimated completion (optional)", with: "2026-11-15"
     assert_layout_fits(320, current_path)
-    find_field("Estimated completion date").set(Date.new(2026, 11, 16))
+    find_field("Estimated completion (optional)").set(Date.new(2026, 11, 16))
     click_on "Update Job"
     assert_text "Job was successfully updated."
     assert_equal Date.new(2026, 11, 16), job.reload.estimated_completion_date

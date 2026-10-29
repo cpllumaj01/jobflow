@@ -278,8 +278,7 @@ module DemoData
         address: rivera.address,
         status: "completed",
         start_date: Date.current - 100.days,
-        estimated_completion_date: Date.current - 35.days,
-        completed_at: 38.days.ago
+        estimated_completion_date: Date.current - 35.days
       )
       basement_estimate = basement.create_estimate!(
         status: "approved",
@@ -355,7 +354,6 @@ module DemoData
             description: "Residential improvements at #{address}.",
             address: address,
             status: status,
-            completed_at: status == "completed" ? (index + 1).days.ago : nil,
             created_at: (index + 1).days.ago
           )
         end
