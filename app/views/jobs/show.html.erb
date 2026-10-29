@@ -177,7 +177,7 @@
     <h2 id="attachments-heading" class="text-lg font-semibold text-slate-950">Attachments</h2>
 
     <% if @attachment_errors.present? %>
-      <div role="alert" class="mt-4 text-sm text-red-600">
+      <div role="alert" class="mt-4 break-words text-sm text-red-600">
         <% @attachment_errors.each do |message| %>
           <p><%= message %></p>
         <% end %>
@@ -204,12 +204,16 @@
     <% end %>
 
     <%= form_with scope: :job, url: job_attachments_path(@job), multipart: true,
-        data: { turbo: false }, class: "mt-6 space-y-3" do |form| %>
+        data: { turbo: false, controller: "attachment-upload", action: "submit->attachment-upload#submit",
+                attachment_upload_max_size_value: Job::MAX_FILE_SIZE,
+                attachment_upload_extensions_value: Job::FILE_CONTENT_TYPES.keys }, class: "mt-6 space-y-3" do |form| %>
       <%= form.label :files, "Choose files", class: "block text-sm font-medium text-slate-700" %>
-      <%= form.file_field :files, multiple: true, required: true,
-          class: "block w-full cursor-pointer rounded-lg border border-slate-400 bg-white p-2 text-sm text-slate-700 transition-colors hover:border-slate-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-slate-700 file:transition-colors file:hover:bg-slate-200", aria: { describedby: "file-size-limit" } %>
-      <p id="file-size-limit" class="text-xs text-slate-500">Maximum 20 MB per file. Select one or more files to upload.</p>
-      <%= form.submit "Upload files", class: "inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <%= form.file_field :files, multiple: true, required: true, accept: Job::FILE_CONTENT_TYPES.keys.map { |extension| ".#{extension}" }.join(","),
+          data: { attachment_upload_target: "input", action: "change->attachment-upload#validate" },
+          class: "block w-full min-h-11 min-w-0 cursor-pointer rounded-lg border border-slate-400 bg-white p-2 text-sm text-slate-700 transition-colors hover:border-slate-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-slate-700 file:transition-colors file:hover:bg-slate-200", aria: { describedby: "file-size-limit file-upload-errors" } %>
+      <p id="file-size-limit" class="text-xs text-slate-500">PDF, JPG/JPEG, PNG, WEBP, TXT, CSV, DOCX, XLSX. Maximum <%= number_to_human_size(Job::MAX_FILE_SIZE, precision: 0) %> per file. Select one or more files to upload.</p>
+      <ul id="file-upload-errors" data-attachment-upload-target="errors" role="alert" aria-atomic="true" class="space-y-1 break-words text-sm text-red-600"></ul>
+      <%= form.submit "Upload files", class: "inline-block min-h-11 cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
     <% end %>
   </section>
 

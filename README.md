@@ -76,6 +76,14 @@ The UI primarily uses server-rendered Rails forms. Stimulus controllers debounce
 
 Job attachments use Active Storage. Attachment access is routed through owned Jobs, and the default Active Storage routes are disabled so file access follows the application's ownership rules.
 
+New uploads allow **PDF, JPG/JPEG, PNG, WEBP, TXT, CSV, DOCX, and XLSX**, up to **20 MB (20,971,520 bytes) per file**, inclusive. These formats cover plans, site photos, scope notes, contracts, and spreadsheets. Executables, scripts, HTML/SVG, archives, macro-enabled Office extensions, legacy DOC/XLS, and other formats are unsupported; export them to a supported format. Existing attachments remain downloadable and removable, and do not need conversion for ordinary job edits.
+
+The browser checks every selected file's size and extension immediately and blocks submission until the selection is corrected. Rails supplies the limit and permitted extensions to Stimulus. Browser MIME values vary, so they are not used to reject otherwise valid selections. Without JavaScript, the same server policy applies after the request arrives. An upstream proxy may reject a large request before Rails can respond; its request-body limit must accommodate multipart overhead and batches of files.
+
+Before handing a batch to Active Storage, the server checks actual uploaded sizes and uses Active Storage's existing Marcel library to detect content without filename or declared-MIME fallback. The detected format must match the extension; a misleading client MIME is replaced with the detected type. TXT/CSV lack reliable signatures, so they additionally require valid UTF-8 text (including ASCII), without binary control bytes. Empty files are rejected. ZIP signatures alone do not qualify as DOCX/XLSX: Marcel must recognize the corresponding Office document structure. This is format identification, not full document parsing, macro inspection, or malware scanning; permitted documents can still contain unsafe content. Older text encodings must be exported as UTF-8.
+
+Any invalid member rejects the entire batch before blobs, attachments, or activity events are created. Successful attachment changes and their activity records remain in the existing locked transaction. Downloads retain owner checks and an attachment disposition.
+
 ## Run locally
 
 Install **Ruby 4.0.7**, PostgreSQL, and the compiler/PostgreSQL client headers needed to build gems. Start PostgreSQL before preparing the database.

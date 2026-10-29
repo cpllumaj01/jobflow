@@ -7,7 +7,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "uploads multiple files and appends subsequent uploads" do
-    assert_difference([ "ActiveStorage::Attachment.count", "Activity.count" ], 2) do
+    assert_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ], 2) do
       post job_attachments_url(@job), params: { job: { files: [ upload, upload ] } }
     end
     assert_redirected_to job_url(@job)
@@ -35,6 +35,10 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "p", text: "No attachments yet. Upload plans, photos, or documents using the form below."
     assert_select "form[action=?][enctype='multipart/form-data']", job_attachments_path(@job), count: 1 do
       assert_select "input[type='file'][multiple][name='job[files][]']"
+      assert_select "input[type='file'][aria-describedby='file-size-limit file-upload-errors']"
+      assert_select "[data-attachment-upload-max-size-value=?]", Job::MAX_FILE_SIZE.to_s
+      assert_select "#file-size-limit", text: /PDF, JPG\/JPEG, PNG, WEBP, TXT, CSV, DOCX, XLSX.*20 MB per file/
+      assert_select "#file-upload-errors[role='alert'][aria-atomic='true']"
       assert_select "input[type='submit'][value='Upload files']", count: 1
     end
   end
@@ -71,7 +75,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "cannot upload to another users job" do
-    assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
+    assert_no_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ]) do
       post job_attachments_url(jobs(:office_buildout)), params: { job: { files: [ upload ] } }
     end
     assert_response :not_found
@@ -109,7 +113,7 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     delete session_url
     get job_attachment_url(@job, file)
     assert_redirected_to new_session_url
-    assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
+    assert_no_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ]) do
       post job_attachments_url(@job), params: { job: { files: [ upload ] } }
       assert_redirected_to new_session_url
       delete job_attachment_url(@job, file)
@@ -117,27 +121,86 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "empty uploads and signed blob ids are rejected" do
+  test "missing malformed uploads and signed blob ids reject the entire batch" do
     @job.files.attach(upload)
-    [ [], [ "" ], [ @job.files.first.blob.signed_id ] ].each do |files|
-      assert_no_difference([ "ActiveStorage::Attachment.count", "Activity.count" ]) do
-        post job_attachments_url(@job), params: { job: { files: files } }
-      end
-      assert_response :unprocessable_entity
-      assert_select "[role='alert']", text: /at least one uploaded file/
+    [ {}, { job: "invalid" }, { job: {} }, { job: { files: {} } },
+      { job: { files: { filename: "plan.pdf" } } },
+      { job: { files: [] } }, { job: { files: [ "" ] } },
+      { job: { files: [ upload, @job.files.first.blob.signed_id ] } },
+      { job: { files: [ upload, "invalid" ] } } ].each do |parameters|
+      assert_rejected_batch(parameters, /at least one uploaded file/)
     end
+  end
+
+  test "upload exactly at the size limit is accepted with intact content" do
+    contents = "a" * Job::MAX_FILE_SIZE
+    assert_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ], 1) do
+      post job_attachments_url(@job), params: { job: { files: [ upload_with(contents, filename: "scope.txt") ] } }
+    end
+    assert_redirected_to job_url(@job)
+    assert_equal Job::MAX_FILE_SIZE, @job.files.sole.byte_size
+    assert_equal contents, @job.files.sole.download
+  end
+
+  test "supported document image and text formats accept untrustworthy client MIME types" do
+    %w[plan.pdf photo.jpg photo.png photo.webp materials.csv project.docx project.xlsx project.txt].each do |filename|
+      file = fixture_file_upload(filename, "application/octet-stream")
+      assert_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ], 1) do
+        post job_attachments_url(@job), params: { job: { files: [ file ] } }
+      end
+      assert_redirected_to job_url(@job)
+      attachment = @job.files.order(:id).last
+      assert_equal Job::FILE_CONTENT_TYPES[File.extname(filename).delete_prefix(".")], attachment.content_type
+      assert_equal File.binread(file_fixture(filename)), attachment.download
+    end
+
+    file = upload_with(File.binread(file_fixture("photo.png")), filename: "PHOTO.PNG", type: "application/pdf")
+    post job_attachments_url(@job), params: { job: { files: [ file ] } }
+    assert_redirected_to job_url(@job)
+    assert_equal "image/png", @job.files.order(:id).last.content_type
+
+    file = upload_with(File.binread(file_fixture("photo.jpg")), filename: "photo.jpeg", type: "text/plain")
+    post job_attachments_url(@job), params: { job: { files: [ file ] } }
+    assert_redirected_to job_url(@job)
+    assert_equal "image/jpeg", @job.files.order(:id).last.content_type
+  end
+
+  test "UTF-8 text with a BOM or non-ASCII characters is accepted" do
+    contents = "\uFEFFScope: café renovation\n"
+    post job_attachments_url(@job), params: { job: { files: [ upload_with(contents, filename: "scope.txt") ] } }
+    assert_redirected_to job_url(@job)
+    assert_equal contents.b, @job.files.sole.download
+  end
+
+  test "unsupported extensions and mismatched or binary content reject the entire batch" do
+    @job.files.attach(upload)
+    [ [ "program.exe", "MZ\x90\0", "application/pdf" ],
+      [ "scope.html", "<html><script>alert(1)</script></html>", "text/plain" ],
+      [ "scope.svg", '<svg xmlns="http://www.w3.org/2000/svg"/>', "image/svg+xml" ],
+      [ "scope.docm", File.binread(file_fixture("project.docx")), "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ],
+      [ "scope", "project notes", "text/plain" ],
+      [ "fake.pdf", "project notes", "application/pdf" ],
+      [ "photo.jpg", File.binread(file_fixture("plan.pdf")), "image/jpeg" ],
+      [ "scope.txt", "<html><script>alert(1)</script></html>", "text/plain" ],
+      [ "scope.txt", "binary\0content", "text/plain" ],
+      [ "materials.csv", "\xFF\xFE\0\0", "text/csv" ],
+      [ "project.docx", File.binread(file_fixture("project.xlsx")), "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ],
+      [ "fake.xlsx", "PK\x03\x04" + ("\0" * 100), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ] ].each do |filename, contents, type|
+      bad_file = upload_with(contents, filename: filename, type: type)
+      assert_rejected_batch({ job: { files: [ upload, bad_file ] } }, /#{Regexp.escape(filename)}.*unsupported format/)
+    end
+  end
+
+  test "empty file rejects a mixed batch" do
+    @job.files.attach(upload)
+    assert_rejected_batch({ job: { files: [ upload, upload_with("", filename: "empty.txt") ] } }, /empty.txt.*is empty/)
   end
 
   test "oversized upload rejects entire batch and preserves existing attachments" do
     @job.files.attach(upload)
     oversized = upload
     oversized.tempfile.truncate(Job::MAX_FILE_SIZE + 1)
-    assert_no_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ]) do
-      post job_attachments_url(@job), params: { job: { files: [ upload, oversized ] } }
-    end
-    assert_response :unprocessable_entity
-    assert_select "[role='alert']", text: /20 MB or smaller/
-    assert_equal 1, @job.reload.files.count
+    assert_rejected_batch({ job: { files: [ upload, oversized ] } }, /project.txt.*20 MB or smaller/)
   end
 
   test "default public storage routes are disabled" do
@@ -147,6 +210,21 @@ class JobAttachmentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+    def assert_rejected_batch(parameters, message)
+      existing_ids = @job.files.ids
+      assert_no_difference([ "ActiveStorage::Attachment.count", "ActiveStorage::Blob.count", "Activity.count" ]) do
+        post job_attachments_url(@job), params: parameters
+      end
+      assert_response :unprocessable_entity
+      assert_select "[role='alert']", text: message
+      assert_equal existing_ids, @job.reload.files.ids
+      @job.files.each { |file| assert_equal File.read(file_fixture("project.txt")), file.download }
+    end
+
+    def upload_with(contents, filename:, type: "text/plain")
+      Rack::Test::UploadedFile.new(StringIO.new(contents.b), type, true, original_filename: filename)
+    end
+
     def upload
       fixture_file_upload("project.txt", "text/plain")
     end

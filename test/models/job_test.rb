@@ -8,7 +8,25 @@ class JobTest < ActiveSupport::TestCase
     assert job.valid?
     job.files.first.blob.byte_size += 1
     assert_not job.valid?
-    assert_includes job.errors[:files], "must be 20 MB or smaller per file"
+    assert_includes job.errors[:files], '"project.txt" must be 20 MB or smaller per file'
+  end
+
+  test "new attachment types must match their extensions" do
+    job = jobs(:kitchen_renovation)
+    job.files = [ { io: StringIO.new("%PDF-1.4\n"), filename: "photo.jpg", content_type: "image/jpeg" } ]
+    assert_not job.valid?
+    assert_match(/photo.jpg.*content does not match/, job.errors[:files].join)
+  end
+
+  test "existing unsupported and empty attachments do not block job updates or new valid files" do
+    job = jobs(:kitchen_renovation)
+    blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("old drawing"), filename: "drawing.dwg")
+    job.files_attachments.create!(blob: blob)
+    empty_blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new(""), filename: "empty.txt")
+    job.files_attachments.create!(blob: empty_blob)
+    assert job.update(name: "Updated project")
+    assert job.files.attach(io: StringIO.new("notes"), filename: "project.txt", content_type: "text/plain")
+    assert_equal 3, job.reload.files.count
   end
 
   test "requires a name" do
