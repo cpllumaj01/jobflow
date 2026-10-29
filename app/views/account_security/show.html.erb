@@ -18,9 +18,9 @@
       <h3 class="mt-6 font-semibold text-slate-900">Regenerate recovery codes</h3>
       <p class="mt-2 text-sm text-slate-600">This invalidates all previous recovery codes and signs out your other sessions.</p>
       <%= form_with url: recovery_codes_account_security_path, data: { turbo: false }, class: "mt-6 space-y-5" do |form| %>
+        <%= form.hidden_field :email_address, id: "regeneration_email_address", value: Current.user.email_address, autocomplete: "username" %>
         <div>
-          <%= form.label :password, "Current password", for: "regeneration_password", class: "block text-sm font-medium text-slate-700" %>
-          <%= form.password_field :password, id: "regeneration_password", required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+          <%= render "shared/password_field", form: form, field: :password, label: "Current password", autocomplete: "current-password", options: { id: "regeneration_password", maxlength: 72 } %>
         </div>
         <div>
           <%= form.label :verification_code, "Authenticator or recovery code", for: "regeneration_code", class: "block text-sm font-medium text-slate-700" %>
@@ -32,9 +32,9 @@
       <h3 class="mt-8 border-t border-slate-200 pt-6 font-semibold text-slate-900">Disable two-factor authentication</h3>
       <p class="mt-2 text-sm text-slate-600">This removes your authenticator, invalidates recovery codes, and signs out your other sessions.</p>
       <%= form_with url: two_factor_account_security_path, method: :delete, data: { turbo: false }, class: "mt-6 space-y-5" do |form| %>
+        <%= form.hidden_field :email_address, id: "disable_email_address", value: Current.user.email_address, autocomplete: "username" %>
         <div>
-          <%= form.label :password, "Current password", for: "disable_password", class: "block text-sm font-medium text-slate-700" %>
-          <%= form.password_field :password, id: "disable_password", required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+          <%= render "shared/password_field", form: form, field: :password, label: "Current password", autocomplete: "current-password", options: { id: "disable_password", maxlength: 72 } %>
         </div>
         <div>
           <%= form.label :verification_code, "Authenticator or recovery code", for: "disable_code", class: "block text-sm font-medium text-slate-700" %>
@@ -45,9 +45,9 @@
     <% else %>
       <p class="mt-2 text-sm text-slate-600">Not enabled. Use an app such as Google Authenticator, Microsoft Authenticator, or 1Password to add a second sign-in step.</p>
       <%= form_with url: setup_account_security_path, data: { turbo: false }, class: "mt-6 space-y-5" do |form| %>
+        <%= form.hidden_field :email_address, id: "setup_email_address", value: Current.user.email_address, autocomplete: "username" %>
         <div>
-          <%= form.label :password, "Current password", class: "block text-sm font-medium text-slate-700" %>
-          <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:outline-2 focus:outline-slate-500" %>
+          <%= render "shared/password_field", form: form, field: :password, label: "Current password", autocomplete: "current-password", options: { id: "setup_password", maxlength: 72 } %>
         </div>
         <%= form.submit "Set up two-factor authentication", class: "w-full cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
       <% end %>

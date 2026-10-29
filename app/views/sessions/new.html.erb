@@ -11,8 +11,7 @@
         <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", value: params[:email_address], class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
       </div>
       <div>
-        <%= form.label :password, "Password", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: 72, class: "mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 transition-colors hover:border-slate-400" %>
+        <%= render "shared/password_field", form: form, field: :password, label: "Password", autocomplete: "current-password", options: { maxlength: 72 } %>
       </div>
 
       <%= form.submit "Sign in", class: "w-full inline-block cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
