@@ -115,29 +115,30 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
     set_viewport(320)
     visit jobs_path
     assert_selector "ul[aria-label='Jobs'] li", count: 2
-    [ find_button("Filter jobs"), find_link("Reset filters") ].each do |control|
+    [ find("summary", text: "All statuses"), find_link("Reset filters") ].each do |control|
       assert_operator control.evaluate_script("this.getBoundingClientRect().height"), :>=, 44
     end
 
     fill_in "Search jobs", with: "kitchen"
     assert_selector "ul[aria-label='Jobs'] li", count: 1
     assert_field "Search jobs", with: "kitchen", focused: true
-    select "Draft", from: "Status"
+    find("summary", text: "All statuses").click
+    check "Draft"
     assert_text "No jobs match your filters"
     assert_layout_fits(320, current_path)
-    select "In progress", from: "Status"
+    uncheck "Draft"
+    check "In progress"
     assert_selector "ul[aria-label='Jobs'] li", count: 1
-    click_on "Filter jobs"
     assert_current_path jobs_path, ignore_query: true
     assert_field "Search jobs", with: "kitchen"
-    assert_select "Status", selected: "In progress"
+    assert_checked_field "In progress", visible: :all
     assert_selector "ul[aria-label='Jobs'] li", text: @job.name, count: 1
     assert_layout_fits(320, current_path)
 
     click_on "Reset filters"
     assert_current_path jobs_path
     assert_field "Search jobs", with: ""
-    assert_select "Status", selected: "All statuses"
+    assert_no_selector "input[name='status[]']:checked", visible: :all
     assert_selector "ul[aria-label='Jobs'] li", count: 2
     within find("ul[aria-label='Jobs'] li", text: @unpriced_job.name) do
       assert_selector "dd", text: @customer.name
@@ -366,7 +367,7 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
           const rect = element.getBoundingClientRect();
           const parent = element.parentElement.getBoundingClientRect();
           return rect.left < parent.left - 1 || rect.right > parent.right + 1 || (element.matches('[type=date], [type=datetime-local]') && element.scrollWidth > element.clientWidth) ||
-            ((window.innerWidth < 640 || matchMedia('(any-pointer: coarse)').matches) && parseFloat(getComputedStyle(element).fontSize) < 16);
+            (!element.matches('[type=checkbox]') && (window.innerWidth < 640 || matchMedia('(any-pointer: coarse)').matches) && parseFloat(getComputedStyle(element).fontSize) < 16);
         }).map(element => element.name)
       JS
       assert_empty small_fields, "Fields overflow their container or invite focus zoom on #{path}: #{small_fields.inspect}"
@@ -399,7 +400,8 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
       outside = page.evaluate_script(<<~JS)
         Array.from(document.querySelectorAll('nav a, nav button, main input:not([type=hidden]), main select, main textarea, main button, main a')).filter(element => {
           if (!element.getClientRects().length || element.closest('[role=region]')) return false;
-          const rect = element.getBoundingClientRect();
+          const target = element.matches('input[type=checkbox]') ? element.labels[0] : element;
+          const rect = target.getBoundingClientRect();
           return rect.left < 0 || rect.right > window.innerWidth + 1 || rect.width < 24 || rect.height < 24;
         }).map(element => element.textContent.trim() || element.name)
       JS

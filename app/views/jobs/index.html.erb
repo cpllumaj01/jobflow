@@ -19,28 +19,40 @@
 </div>
 
 <%= form_with url: jobs_path, method: :get,
-    data: { controller: "job-filters", action: "submit->job-filters#cancel", turbo_frame: "jobs_results", turbo_action: "replace" },
+    data: { controller: "job-filters", action: "submit->job-filters#cancel click@window->job-filters#dismiss resize@window->job-filters#positionDropdown", turbo_frame: "jobs_results", turbo_action: "replace" },
     class: "mt-8 flex flex-wrap items-end gap-3 sm:gap-4" do |form| %>
   <div class="min-w-0 basis-full sm:min-w-64 sm:flex-1">
     <%= form.label :q, "Search jobs", class: "block text-sm font-medium text-slate-700" %>
     <%= form.search_field :q, value: @query, placeholder: "Job name, address, or customer",
         data: { action: "input->job-filters#search" },
-        class: "mt-1 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-500 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        class: "mt-1 block min-h-11 min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-500 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
   </div>
 
-  <div class="w-full sm:w-auto">
-    <%= form.label :status, "Status", class: "block text-sm font-medium text-slate-700" %>
-    <% status_options = Job::STATUSES.map { |status| [status.humanize, status] } %>
-    <% status_options << ["Unknown status: #{@status}", @status] if @status.present? && !Job::STATUSES.include?(@status) %>
-    <%= form.select :status, status_options, { include_blank: "All statuses", selected: @status },
-        data: { action: "change->job-filters#submit" },
-        class: "mt-1 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-500 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
-  </div>
+  <details data-job-filters-target="dropdown" data-action="keydown.esc->job-filters#escape focusout->job-filters#dismissFocus toggle->job-filters#positionDropdown"
+      class="relative min-w-40 flex-1 sm:w-56 sm:flex-none">
+    <summary data-job-filters-target="toggle" class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition-colors hover:border-slate-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 [&::-webkit-details-marker]:hidden">
+      <span class="sr-only">Statuses: </span>
+      <span data-job-filters-target="selection" aria-live="polite" class="min-w-0 truncate"><%= @statuses.empty? ? "All statuses" : @statuses.one? ? @statuses.first.humanize : "#{@statuses.size} statuses selected" %></span>
+      <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" class="size-4 shrink-0"><path fill-rule="evenodd" d="M5.22 7.22a.75.75 0 0 1 1.06 0L10 10.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
+    </summary>
+    <div data-job-filters-target="panel" class="absolute inset-x-0 top-full z-10 my-2 max-h-80 overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-lg">
+      <fieldset>
+        <legend class="sr-only">Statuses</legend>
+        <% (Job::STATUSES + (@statuses - Job::STATUSES)).each_with_index do |status, index| %>
+          <label for="job_filter_status_<%= index %>" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-slate-700 hover:bg-slate-100 has-checked:font-medium has-checked:text-slate-950">
+            <%= check_box_tag "status[]", status, @statuses.include?(status), id: "job_filter_status_#{index}",
+                data: { job_filters_target: "status", action: "change->job-filters#changeStatuses" },
+                class: "size-4 shrink-0 cursor-pointer accent-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+            <span class="min-w-0 break-words"><%= Job::STATUSES.include?(status) ? status.humanize : "Unknown status: #{status}" %></span>
+          </label>
+        <% end %>
+      </fieldset>
+    </div>
+  </details>
 
-  <div class="flex w-full items-center gap-3 sm:contents">
-    <%= form.submit "Filter jobs", class: "inline-block min-h-11 cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 sm:min-h-0" %>
-    <%= link_to "Reset filters", jobs_path, data: { action: "click->job-filters#cancel" }, class: "inline-flex min-h-11 items-center px-2 py-2 text-sm font-medium text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 sm:min-h-0" %>
-  </div>
+  <%= form.submit "Filter jobs", data: { job_filters_target: "manualSubmit" }, class: "min-h-11 cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+  <%= link_to "Reset filters", jobs_path, data: { action: "click->job-filters#cancel" }, class: "inline-flex min-h-11 shrink-0 items-center py-2 text-sm font-medium text-slate-600 hover:text-slate-950 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 hover:underline underline-offset-4 sm:px-2" %>
+
 <% end %>
 
 <%= turbo_frame_tag "jobs_results", target: "_top", data: { turbo_action: "replace" } do %>
@@ -115,10 +127,16 @@
           </tbody>
         </table>
       </div>
-    <% elsif @query.present? || @status.present? %>
+    <% elsif @query.present? || @statuses.any? %>
       <div class="px-6 py-12 text-center">
         <h2 class="font-semibold text-slate-950">No jobs match your filters</h2>
-        <p class="mt-1 text-sm text-slate-500">Try a different search or reset the filters.</p>
+        <p class="mt-1 text-sm text-slate-500">
+          <% if (@statuses - Job::STATUSES).any? %>
+            Unknown statuses return no jobs. Clear them or choose Reset filters to continue.
+          <% else %>
+            Try a different search or reset the filters.
+          <% end %>
+        </p>
       </div>
     <% else %>
       <div class="px-6 py-12 text-center">
@@ -129,5 +147,5 @@
       </div>
     <% end %>
   </div>
-  <%= render "shared/pagination", filters: { q: @query.presence, status: @status.presence }.compact, frame: "jobs_results" %>
+  <%= render "shared/pagination", filters: { q: @query.presence, status: @statuses.presence }.compact, frame: "jobs_results" %>
 <% end %>
