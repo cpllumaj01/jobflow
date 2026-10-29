@@ -12,6 +12,7 @@ class JobActivityTest < ActionDispatch::IntegrationTest
   test "job status changes record the actor and transition only once" do
     Job::STATUSES.each do |status|
       previous_status = @job.reload.status
+      previous_completion = @job.completed_at
       assert_difference("Activity.count", 1) do
         patch job_url(@job), params: { job: {
           customer_id: @job.customer_id, status: status, actor_id: users(:two).id,
@@ -23,7 +24,10 @@ class JobActivityTest < ActionDispatch::IntegrationTest
       activity = @job.activities.newest_first.first
       assert_equal @user, activity.actor
       assert_equal "job_status_changed", activity.event
-      assert_equal({ "previous_status" => previous_status, "new_status" => status }, activity.metadata)
+      expected = { "previous_status" => previous_status, "new_status" => status }
+      expected["completed_at"] = @job.reload.completed_at.iso8601(6) if status == "completed"
+      expected["previous_completed_at"] = previous_completion.iso8601(6) if previous_status == "completed"
+      assert_equal expected, activity.metadata
 
       assert_no_difference("Activity.count") do
         patch job_url(@job), params: { job: { customer_id: @job.customer_id, status: status, description: "Updated details" } }
@@ -112,10 +116,24 @@ class JobActivityTest < ActionDispatch::IntegrationTest
 
     assert_equal original_job_status, @job.reload.status
     assert_equal "Kitchen Renovation", @job.name
+    assert_nil @job.completed_at
     assert_equal "draft", @estimate.reload.status
     assert_nil @estimate.approved_at
     assert_equal "draft", @change_order.reload.status
     assert_nil @change_order.approved_at
+  end
+
+  test "quick status changes and completion timestamps roll back when history cannot be saved" do
+    with_failed_activity_creation do
+      assert_no_difference("Activity.count") do
+        assert_raises(IOError) do
+          patch update_status_job_url(@job), params: { job: { status: "completed" } }
+        end
+      end
+    end
+
+    assert_equal "in_progress", @job.reload.status
+    assert_nil @job.completed_at
   end
 
   test "estimate and change order creation roll back when activity creation fails" do

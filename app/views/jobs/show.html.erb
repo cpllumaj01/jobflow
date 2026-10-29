@@ -29,6 +29,34 @@
         class: "inline-block shrink-0 cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
   </div>
 
+  <section class="mt-8 rounded-xl border border-slate-300 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="job-status-heading">
+    <h2 id="job-status-heading" class="text-lg font-semibold text-slate-950">Job status</h2>
+    <p id="job-status-help" class="mt-2 text-sm text-slate-600">
+      <% if @job.status == "completed" %>
+        Choose another status to reopen this job. Its previous completion stays in Activity history.
+      <% else %>
+        Completing the job records the current date and time automatically.
+      <% end %>
+    </p>
+    <div class="mt-4 flex flex-wrap items-end gap-3">
+      <%= form_with model: @job, url: update_status_job_path(@job), method: :patch,
+          class: "contents" do |form| %>
+        <div class="w-full min-w-0 sm:w-56">
+          <%= form.label :status, "New status", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.select :status, Job::STATUSES.map { |status| [status.humanize, status] }, {},
+              aria: { describedby: "job-status-help" },
+              class: "mt-2 block min-h-11 min-w-0 w-full cursor-pointer rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base text-slate-950 shadow-sm transition-colors hover:border-slate-500 focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 sm:text-sm" %>
+        </div>
+        <%= form.submit "Update status", class: "min-h-11 cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <% end %>
+      <% unless %w[completed cancelled].include?(@job.status) %>
+        <%= button_to "Complete job", update_status_job_path(@job), method: :patch,
+            params: { job: { status: "completed" } },
+            class: "min-h-11 cursor-pointer rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+      <% end %>
+    </div>
+  </section>
+
   <div class="mt-8 grid gap-4 md:grid-cols-3">
     <div class="rounded-xl border border-slate-300 bg-white p-5 shadow-sm">
       <p class="text-sm font-medium text-slate-500">
@@ -119,7 +147,7 @@
           </dd>
         </div>
 
-        <% if @job.completed_at.present? %>
+        <% if @job.status == "completed" && @job.completed_at.present? %>
           <div>
             <dt class="text-sm font-medium text-slate-500">Completed</dt>
             <dd class="mt-1 text-sm text-slate-900">

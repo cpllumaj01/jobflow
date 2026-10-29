@@ -42,6 +42,68 @@ class JobTest < ActiveSupport::TestCase
     assert_includes job.errors[:status], "is not included in the list"
   end
 
+  test "creation sets completion from the server only for completed jobs" do
+    freeze_time do
+      Job::STATUSES.each do |status|
+        job = customers(:johnson).jobs.create!(name: "New job", status: status, completed_at: 5.years.ago)
+        if status == "completed"
+          assert_equal Time.current, job.reload.completed_at
+        else
+          assert_nil job.reload.completed_at
+        end
+      end
+    end
+  end
+
+  test "completion time survives ordinary edits and cannot be manually replaced or cleared" do
+    job = jobs(:kitchen_renovation)
+    job.update!(status: "completed")
+    completed_at = job.completed_at
+
+    travel 1.hour do
+      [ nil, Time.current ].each do |submitted_time|
+        job.update!(name: "Updated job", status: "completed", completed_at: submitted_time)
+        assert_equal completed_at, job.reload.completed_at
+      end
+    end
+  end
+
+  test "every non-completed status clears completion timestamps" do
+    job = jobs(:kitchen_renovation)
+
+    (Job::STATUSES - [ "completed" ]).each do |status|
+      job.update!(status: "completed")
+      job.update!(status: status)
+      assert_nil job.reload.completed_at
+      job.update!(completed_at: Time.current)
+      assert_nil job.reload.completed_at
+    end
+  end
+
+  test "reopening and completing again records a new server completion time" do
+    job = jobs(:kitchen_renovation)
+    job.update!(status: "completed")
+    previous_completion = job.completed_at
+    job.update!(status: "in_progress")
+    assert_nil job.reload.completed_at
+
+    travel 1.day do
+      job.update!(status: "completed")
+      assert_equal Time.current, job.reload.completed_at
+      assert_operator job.completed_at, :>, previous_completion
+    end
+  end
+
+  test "saving completed records without a timestamp repairs their completion time" do
+    job = jobs(:kitchen_renovation)
+    job.update_columns(status: "completed", completed_at: nil)
+
+    freeze_time do
+      job.update!(description: "Updated details")
+      assert_equal Time.current, job.reload.completed_at
+    end
+  end
+
   test "allows multiple change orders for a job" do
     job = jobs(:kitchen_renovation)
 

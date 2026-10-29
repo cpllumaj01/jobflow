@@ -6,6 +6,8 @@ Rails.application.routes.draw do
   end
 
   resources :jobs do
+    patch :update_status, on: :member
+
     resources :attachments, only: %i[show create destroy], controller: "job_attachments"
     resources :change_orders, only: %i[index show new create edit update] do
       member do

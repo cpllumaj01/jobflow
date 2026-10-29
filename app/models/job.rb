@@ -13,6 +13,8 @@ class Job < ApplicationRecord
   validates :name, presence: true
   validates :status, inclusion: { in: STATUSES }
 
+  before_save :sync_completed_at
+
   def original_estimate_value
     estimate&.status == "approved" ? estimate.total : 0
   end
@@ -30,6 +32,18 @@ class Job < ApplicationRecord
   end
 
   private
+    def sync_completed_at
+      if status == "completed"
+        self.completed_at = if will_save_change_to_status? || completed_at_in_database.nil?
+          Time.current
+        else
+          completed_at_in_database
+        end
+      else
+        self.completed_at = nil
+      end
+    end
+
     def file_sizes
       files.each do |file|
         errors.add(:files, "must be 20 MB or smaller per file") if file.blob.byte_size > MAX_FILE_SIZE
