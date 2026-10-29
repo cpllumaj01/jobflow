@@ -14,9 +14,9 @@ class PaginationTest < ApplicationSystemTestCase
   test "job pagination updates the frame and supports browser history with filters intact" do
     timestamp = Time.current
     added_jobs = Array.new(51) do |index|
-      @customer.jobs.create!(name: "Paged job #{index}", status: "draft", created_at: timestamp)
+      @customer.jobs.create!(name: "Paged job #{index}", status: index.even? ? "draft" : "quoted", created_at: timestamp)
     end
-    visit jobs_path(q: "Paged", status: "draft")
+    visit jobs_path(q: "Paged", status: [ "draft", "quoted" ])
     assert_text "Page 1 of 3"
     assert_list_records added_jobs.reverse.first(25)
     page.execute_script("window.paginationSearchField = document.querySelector('input[name=q]')")
@@ -25,7 +25,7 @@ class PaginationTest < ApplicationSystemTestCase
       click_on "Next"
     end
     assert_text "Showing 26–50 of 51"
-    assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_current_path jobs_path(q: "Paged", status: [ "draft", "quoted" ], page: 2)
     assert_list_records added_jobs.reverse.slice(25, 25)
     assert page.evaluate_script("window.paginationSearchField === document.querySelector('input[name=q]')")
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
@@ -34,26 +34,30 @@ class PaginationTest < ApplicationSystemTestCase
       click_on "Next"
     end
     assert_text "Showing 51–51 of 51"
-    assert_current_path jobs_path(q: "Paged", status: "draft", page: 3)
+    assert_current_path jobs_path(q: "Paged", status: [ "draft", "quoted" ], page: 3)
     assert_list_records [ added_jobs.first ]
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
     page.go_back
     assert_text "Showing 26–50 of 51"
-    assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_current_path jobs_path(q: "Paged", status: [ "draft", "quoted" ], page: 2)
     assert_list_records added_jobs.reverse.slice(25, 25)
     assert_no_selector "html[aria-busy], turbo-frame[busy]"
     page.go_back
-    assert_current_path jobs_path(q: "Paged", status: "draft")
+    assert_current_path jobs_path(q: "Paged", status: [ "draft", "quoted" ])
     assert_text "Showing 1–25 of 51"
     assert_list_records added_jobs.reverse.first(25)
     assert_field "Search jobs", with: "Paged"
-    assert_select "Status", selected: "Draft"
+    assert_checked_field "Draft", visible: :all
+    assert_checked_field "Quoted", visible: :all
+    assert_selector "summary", text: "2 statuses selected"
     page.go_forward
     assert_text "Showing 26–50 of 51"
-    assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_current_path jobs_path(q: "Paged", status: [ "draft", "quoted" ], page: 2)
     assert_list_records added_jobs.reverse.slice(25, 25)
     assert_field "Search jobs", with: "Paged"
-    assert_select "Status", selected: "Draft"
+    assert_checked_field "Draft", visible: :all
+    assert_checked_field "Quoted", visible: :all
+    assert_selector "summary", text: "2 statuses selected"
 
     within "tbody tr", text: added_jobs.reverse[25].name, exact: false do
       click_on "View"
@@ -96,10 +100,10 @@ class PaginationTest < ApplicationSystemTestCase
       assert_selector "dd", text: "draft"
     end
     page.go_back
-    assert_current_path jobs_path(q: "Paged", status: "draft", page: 2)
+    assert_current_path jobs_path(q: "Paged", status: [ "draft" ], page: 2)
     assert_text "Showing 26–26 of 26"
     assert_field "Search jobs", with: "Paged"
-    assert_select "Status", selected: "Draft"
+    assert_checked_field "Draft", visible: :all
     assert_list_records [ job ]
     page.go_forward
     assert_current_path job_path(added_jobs.first)
@@ -161,39 +165,63 @@ class PaginationTest < ApplicationSystemTestCase
     click_on "Next"
     assert_text "Showing 26–50 of 53"
     fill_in "Search jobs", with: "Paged"
-    assert_current_path jobs_path(q: "Paged", status: "")
+    assert_current_path jobs_path(q: "Paged")
     assert_text "Showing 1–25 of 52"
 
     page.go_back
     assert_current_path jobs_path
     assert_text "Showing 1–25 of 53"
     assert_field "Search jobs", with: ""
-    assert_select "Status", selected: "All statuses"
+    assert_no_selector "input[name='status[]']:checked", visible: :all
     page.go_forward
-    assert_current_path jobs_path(q: "Paged", status: "")
+    assert_current_path jobs_path(q: "Paged")
     assert_text "Showing 1–25 of 52"
     assert_field "Search jobs", with: "Paged"
-    assert_select "Status", selected: "All statuses"
+    assert_no_selector "input[name='status[]']:checked", visible: :all
 
     click_on "Next"
     assert_text "Showing 26–50 of 52"
-    select "Draft", from: "Status"
-    assert_current_path jobs_path(q: "Paged", status: "draft")
+    find("summary", text: "All statuses").click
+    check "Draft"
+    assert_current_path jobs_path(q: "Paged", status: [ "draft" ])
     assert_text "Showing 1–25 of 26"
     assert_no_selector "tbody tr", text: "Paged garage"
 
     page.go_back
-    assert_current_path jobs_path(q: "Paged", status: "")
+    assert_current_path jobs_path(q: "Paged")
     assert_text "Showing 1–25 of 52"
     assert_field "Search jobs", with: "Paged"
-    assert_select "Status", selected: "All statuses"
+    assert_no_selector "input[name='status[]']:checked", visible: :all
     assert_selector "tbody tr", text: "Paged garage"
     page.go_forward
-    assert_current_path jobs_path(q: "Paged", status: "draft")
+    assert_current_path jobs_path(q: "Paged", status: [ "draft" ])
     assert_text "Showing 1–25 of 26"
     assert_field "Search jobs", with: "Paged"
-    assert_select "Status", selected: "Draft"
+    assert_checked_field "Draft", visible: :all
     assert_no_selector "tbody tr", text: "Paged garage"
+
+    click_on "Next"
+    assert_text "Showing 26–26 of 26"
+    find("summary", text: "Draft").click
+    check "Completed"
+    assert_current_path jobs_path(q: "Paged", status: [ "draft", "completed" ])
+    assert_text "Showing 1–25 of 52"
+    assert_checked_field "Draft", visible: :all
+    assert_checked_field "Completed", visible: :all
+
+    page.go_back
+    assert_current_path jobs_path(q: "Paged", status: [ "draft" ])
+    assert_text "Showing 1–25 of 26"
+    assert_checked_field "Draft", visible: :all
+    assert_unchecked_field "Completed", visible: :all
+    assert_no_selector "tbody tr", text: "Paged garage"
+    page.go_forward
+    assert_current_path jobs_path(q: "Paged", status: [ "draft", "completed" ])
+    assert_text "Showing 1–25 of 52"
+    assert_field "Search jobs", with: "Paged"
+    assert_checked_field "Draft", visible: :all
+    assert_checked_field "Completed", visible: :all
+    assert_selector "tbody tr", text: "Paged garage"
   end
 
   test "debounced search status changes manual submission and reset start at the first page" do
@@ -204,23 +232,24 @@ class PaginationTest < ApplicationSystemTestCase
 
     visit jobs_path(q: "Paged", page: 2)
     assert_text "Page 2 of 3"
-    fill_in "Search jobs", with: "Paged kitchen"
+    fill_in "Search jobs", with: "Paged kitchen", fill_options: { clear: :backspace }
     assert_text "Page 1 of 3"
     assert_field "Search jobs", with: "Paged kitchen", focused: true
-    assert_current_path jobs_path(q: "Paged kitchen", status: "")
+    assert_current_path jobs_path(q: "Paged kitchen")
 
     click_on "Next"
     assert_text "Page 2 of 3"
-    select "Draft", from: "Status"
+    find("summary", text: "All statuses").click
+    check "Draft"
     assert_text "Page 1 of 2"
-    assert_current_path jobs_path(q: "Paged kitchen", status: "draft")
+    assert_current_path jobs_path(q: "Paged kitchen", status: [ "draft" ])
 
     click_on "Next"
     assert_text "Page 2 of 2"
     find_field("Search jobs").send_keys(:enter)
     assert_text "Page 1 of 2"
     assert_current_path jobs_path, ignore_query: true
-    assert_equal({ "q" => "Paged kitchen", "status" => "draft" },
+    assert_equal({ "q" => "Paged kitchen", "status" => [ "draft" ] },
       Rack::Utils.parse_nested_query(URI.parse(current_url).query).except("commit"))
 
     click_on "Next"
@@ -228,21 +257,21 @@ class PaginationTest < ApplicationSystemTestCase
     click_on "Reset filters"
     assert_current_path jobs_path
     assert_field "Search jobs", with: ""
-    assert_select "Status", selected: "All statuses"
+    assert_no_selector "input[name='status[]']:checked", visible: :all
     assert_text "Page 1 of 3"
 
     page.go_back
-    assert_current_path jobs_path(q: "Paged kitchen", status: "draft", page: 2)
+    assert_current_path jobs_path(q: "Paged kitchen", status: [ "draft" ], page: 2)
     assert_text "Page 2 of 2"
     assert_selector "tbody tr", count: 1
     assert_field "Search jobs", with: "Paged kitchen"
-    assert_select "Status", selected: "Draft"
+    assert_checked_field "Draft", visible: :all
     page.go_forward
     assert_current_path jobs_path
     assert_text "Page 1 of 3"
     assert_selector "tbody tr", count: 25
     assert_field "Search jobs", with: ""
-    assert_select "Status", selected: "All statuses"
+    assert_no_selector "input[name='status[]']:checked", visible: :all
   end
 
   test "pagination controls fit phone tablet and desktop viewports for both lists" do

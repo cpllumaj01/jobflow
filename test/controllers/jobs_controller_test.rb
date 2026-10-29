@@ -422,7 +422,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     customers(:fairfield).update!(name: customers(:johnson).name)
 
     [ "Kitchen", "Main Street", "Johnson" ].each do |query|
-      get jobs_url, params: { q: query, status: @job.status }
+      get jobs_url, params: { q: query, status: [ @job.status, "quoted" ] }
       assert_select "tbody a", count: 1
       assert_select "tbody a[href=?]", job_path(@job)
       assert_select "tbody a[href=?]", job_path(other_job), count: 0
@@ -448,13 +448,66 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody a[href=?]", job_path(@job)
   end
 
+  test "multiple statuses match their union and combine with search" do
+    draft = customers(:johnson).jobs.create!(name: "Kitchen Addition", status: "draft")
+    customers(:johnson).jobs.create!(name: "Deck Replacement", status: "draft")
+    customers(:johnson).jobs.create!(name: "Kitchen Remodel", status: "completed")
+
+    get jobs_url, params: { q: "kItChEn", status: [ "draft", "in_progress" ] }
+
+    assert_response :success
+    assert_select "tbody a", count: 2
+    [ draft, @job ].each { |job| assert_select "tbody a[href=?]", job_path(job) }
+    assert_select "input[name='status[]'][checked]", count: 2
+    assert_select "summary", text: /2 statuses selected/
+  end
+
+  test "blank and duplicate statuses normalize without changing the selected union" do
+    [ nil, "", "  ", [], [ "", " " ] ].each do |statuses|
+      get jobs_url, params: { status: statuses }
+
+      assert_response :success
+      assert_select "tbody a[href=?]", job_path(@job)
+      assert_select "input[name='status[]'][checked]", count: 0
+      assert_select "[data-job-filters-target='selection']", text: "All statuses"
+    end
+
+    get jobs_url, params: { status: [ " in_progress ", "", "in_progress", " " ] }
+
+    assert_select "tbody a", count: 1
+    assert_select "input[name='status[]'][checked]", count: 1
+    assert_select "input[name='status[]'][checked][value='in_progress']"
+  end
+
+  test "unknown statuses never broaden even partially valid filters and remain removable" do
+    [ [ "unknown" ], [ "", "unknown" ], [ "in_progress", "unknown" ], [ "' OR 1=1 --" ], [ "<script>alert(1)</script>" ] ].each do |statuses|
+      get jobs_url, params: { status: statuses }
+
+      assert_response :success
+      assert_select "tbody tr", count: 0
+      assert_select "h2", "No jobs match your filters"
+      assert_select "input[name='status[]'][checked]", count: statuses.reject(&:blank?).uniq.size
+      assert_select "p", "Unknown statuses return no jobs. Clear them or choose Reset filters to continue."
+      assert_select "fieldset script", count: 0
+    end
+  end
+
+  test "malformed status structures return bad request instead of all jobs" do
+    [ { value: "in_progress" }, [ { value: "in_progress" } ], [ [ "in_progress" ] ], [ "in_progress", { value: "draft" } ] ].each do |statuses|
+      get "#{jobs_url}?#{Rack::Utils.build_nested_query(status: statuses)}"
+
+      assert_response :bad_request
+      assert_select "turbo-frame#jobs_results", count: 0
+    end
+  end
+
   test "unknown status returns no matches and remains selected" do
     get jobs_url, params: { q: "Kitchen", status: "unknown" }
 
     assert_response :success
     assert_select "tbody tr", count: 0
     assert_select "h2", "No jobs match your filters"
-    assert_select "select[name='status'] option[selected][value='unknown']"
+    assert_select "input[name='status[]'][checked][value='unknown']"
   end
 
   test "filter form uses get retains values and offers reset" do
@@ -462,8 +515,11 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "form[action=?][method='get']", jobs_path do
       assert_select "input[name='q'][value='Kitchen']"
-      assert_select "select[name='status'] option[selected][value='in_progress']"
+      assert_select "input[name='status[]'][checked][value='in_progress']"
       assert_select "a[href=?]", jobs_path, text: "Reset filters"
+      assert_select "input[type='submit'][value='Filter jobs'][data-job-filters-target='manualSubmit']:not([hidden])"
+      assert_select "fieldset legend", text: "Statuses"
+      assert_select "input[type='checkbox'][name='status[]']", count: Job::STATUSES.size
     end
   end
 
@@ -500,7 +556,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "form[data-controller='job-filters'][data-turbo-frame='jobs_results'][data-turbo-action='replace']" do
       assert_select "input[name='q'][data-action='input->job-filters#search']"
-      assert_select "select[name='status'][data-action='change->job-filters#submit']"
+      assert_select "input[name='status[]'][data-action='change->job-filters#changeStatuses']"
       assert_select "a[href=?][data-action='click->job-filters#cancel']", jobs_path
     end
     assert_select "turbo-frame#jobs_results[target='_top'][data-turbo-action='replace']" do
@@ -560,15 +616,17 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "pagination preserves combined filters and targets the results frame" do
-    26.times { customers(:johnson).jobs.create!(name: "Kitchen & bath", status: "draft") }
+    26.times do |index|
+      customers(:johnson).jobs.create!(name: "Kitchen & bath", status: index.even? ? "draft" : "quoted")
+    end
     customers(:fairfield).jobs.create!(name: "Kitchen & bath", status: "draft")
     customers(:johnson).jobs.create!(name: "Kitchen & bath", status: "completed")
 
-    get jobs_url, params: { q: "Kitchen & bath", status: "draft" }
+    get jobs_url, params: { q: "Kitchen & bath", status: [ "draft", "quoted" ] }
 
     assert_select "tbody tr", count: 25
     assert_select "turbo-frame#jobs_results a[rel='next'][data-turbo-frame='jobs_results'][data-turbo-action='advance'][href=?]",
-      jobs_path(q: "Kitchen & bath", status: "draft", page: 2)
+      jobs_path(q: "Kitchen & bath", status: [ "draft", "quoted" ], page: 2)
 
     get css_select("a[rel='next']").first["href"], headers: { "Turbo-Frame" => "jobs_results" }
 
@@ -576,7 +634,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame#jobs_results" do
       assert_select "tbody tr", count: 1
       assert_select "nav[aria-label='Pagination'] p", text: /Showing 26–26 of 26\s+Page 2 of 2/
-      assert_select "a[rel='prev'][href=?]", jobs_path(q: "Kitchen & bath", status: "draft", page: 1)
+      assert_select "a[rel='prev'][href=?]", jobs_path(q: "Kitchen & bath", status: [ "draft", "quoted" ], page: 1)
     end
   end
 
@@ -586,7 +644,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?][method='get']", jobs_path do
       assert_select "input[name='page']", count: 0
       assert_select "input[name='q'][value='Kitchen']"
-      assert_select "select[name='status'] option[selected][value='in_progress']"
+      assert_select "input[name='status[]'][checked][value='in_progress']"
       assert_select "a[href=?]", jobs_path, text: "Reset filters"
     end
   end

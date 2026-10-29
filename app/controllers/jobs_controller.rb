@@ -4,7 +4,7 @@ class JobsController < ApplicationController
 
   def index
     @query = params[:q].to_s.strip
-    @status = params[:status].to_s
+    @statuses = status_filters
     @jobs = Current.user.jobs.order(created_at: :desc, id: :desc)
 
     if @query.present?
@@ -15,8 +15,8 @@ class JobsController < ApplicationController
       )
     end
 
-    if @status.present?
-      @jobs = Job::STATUSES.include?(@status) ? @jobs.where(status: @status) : @jobs.none
+    if @statuses.any?
+      @jobs = (@statuses - Job::STATUSES).empty? ? @jobs.where(status: @statuses) : @jobs.none
     end
 
     @jobs = paginate(@jobs).includes(:customer).load
@@ -77,6 +77,18 @@ class JobsController < ApplicationController
   end
 
   private
+    def status_filters
+      statuses = params[:status]
+      return [] if statuses.nil?
+
+      statuses = [ statuses ] if statuses.is_a?(String)
+      unless statuses.is_a?(Array) && statuses.all? { |status| status.is_a?(String) }
+        raise ActionController::BadRequest, "Status must be a string or an array of strings"
+      end
+
+      statuses.map(&:strip).reject(&:blank?).uniq
+    end
+
     def update_job(attributes)
       @job.with_lock do
         success = @job.update(attributes)
