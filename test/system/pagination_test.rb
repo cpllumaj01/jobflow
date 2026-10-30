@@ -77,11 +77,7 @@ class PaginationTest < ApplicationSystemTestCase
     assert_current_path job_path(job)
     within "section[aria-labelledby='activity-heading']" do
       assert_selector "li", count: 1
-      assert_text "Job status changed"
-      assert_selector "dt", text: "Previous status"
-      assert_selector "dd", text: "quoted"
-      assert_selector "dt", text: "New status"
-      assert_selector "dd", text: "draft"
+      assert_text "Job changed from Quoted to Draft"
       assert_text users(:one).email_address
     end
 
@@ -96,8 +92,7 @@ class PaginationTest < ApplicationSystemTestCase
     assert_selector "h1", text: added_jobs.first.name
     within "section[aria-labelledby='activity-heading']" do
       assert_selector "li", count: 1
-      assert_selector "dd", text: "quoted"
-      assert_selector "dd", text: "draft"
+      assert_text "Job changed from Quoted to Draft"
     end
     page.go_back
     assert_current_path jobs_path(q: "Paged", status: [ "draft" ], page: 2)
@@ -110,8 +105,7 @@ class PaginationTest < ApplicationSystemTestCase
     assert_selector "h1", text: added_jobs.first.name
     within "section[aria-labelledby='activity-heading']" do
       assert_selector "li", count: 1
-      assert_selector "dd", text: "quoted"
-      assert_selector "dd", text: "draft"
+      assert_text "Job changed from Quoted to Draft"
     end
     activity = job.activities.sole
     assert_equal users(:one), activity.actor

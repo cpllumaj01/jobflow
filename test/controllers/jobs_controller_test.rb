@@ -229,7 +229,7 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
         assert_select "li", count: 3
         assert_select "dt", text: "Completed at", count: 2
         assert_select "dt", text: "Previous completed at", count: 1
-        assert_select "dd", text: first_completion.iso8601(6), count: 2
+        assert_select "dd", text: first_completion.in_time_zone.strftime("%b %-d, %Y at %-I:%M %p %Z"), count: 2
       end
     end
   end

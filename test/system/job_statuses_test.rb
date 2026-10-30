@@ -49,7 +49,7 @@ class JobStatusesTest < ApplicationSystemTestCase
       assert_nil @job.completed_at
       within "section[aria-labelledby='activity-heading']" do
         assert_selector "dt", text: "Previous completed at", exact_text: true
-        assert_selector "dd", text: completion.iso8601(6), count: 2
+        assert_selector "dd", text: completion.in_time_zone.strftime("%b %-d, %Y at %-I:%M %p %Z"), count: 2
       end
       click_on "Complete job"
       assert_status "completed"
