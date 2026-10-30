@@ -401,6 +401,7 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
         Array.from(document.querySelectorAll('nav a, nav button, main input:not([type=hidden]), main select, main textarea, main button, main a')).filter(element => {
           if (!element.getClientRects().length || element.closest('[role=region]')) return false;
           const target = element.matches('input[type=checkbox]') ? element.labels[0] : element;
+          if (!target?.checkVisibility({ checkVisibilityCSS: true })) return false;
           const rect = target.getBoundingClientRect();
           return rect.left < 0 || rect.right > window.innerWidth + 1 || rect.width < 24 || rect.height < 24;
         }).map(element => element.textContent.trim() || element.name)
