@@ -7,6 +7,35 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     sign_in_as users(:one)
   end
 
+  test "multiple invalid nested rows have unique field errors and retain persisted identifiers" do
+    item = change_order_line_items(:lighting_materials)
+    patch job_change_order_url(@job, @change_order), params: { change_order: { change_order_line_items_attributes: {
+      "0" => { id: item.id, description: "", quantity: 0, unit_price: -1 },
+      "1791555555000" => { description: "", quantity: -2, unit_price: "" }
+    } } }
+
+    assert_response :unprocessable_entity
+    assert_select '[role="alert"]', text: "We couldn’t save your changes. Review the errors below."
+    assert_select '[role="alert"] li', count: 0
+    assert_select '[data-nested-line-items-target=items] input[name$="[id]"][value=?]', item.id
+    rows = css_select("[data-nested-line-items-target=items] [data-testid=line-item]")
+    invalid_rows = rows.select { |row| row.at_css('[aria-invalid="true"]') }
+    assert_equal 2, invalid_rows.size
+    invalid_rows.each do |row|
+      %w[description quantity unit_price].each do |field|
+        input = row.at_css("input[name$='[#{field}]']")
+        assert_equal "true", input["aria-invalid"]
+        error = row.at_css("p[id='#{input['aria-describedby']}']")
+        assert error, "Error must be in the same row as its input"
+        assert_equal input["id"] + "_error", error["id"]
+        assert_match(/#{field.humanize}/, error.text)
+        assert_equal error, input.ancestors.find { |node| node["class"] == "field_with_errors" }.next_element
+      end
+    end
+    ids = css_select("[id]").map { |node| node["id"] }
+    assert_equal ids.uniq, ids
+  end
+
   test "index lists only the selected job's change orders" do
     second = @job.change_orders.create!(title: "Additional shelving")
     other_job = customers(:johnson).jobs.create!(name: "Bathroom Remodel")
@@ -193,7 +222,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_select "h1", "New change order"
-    assert_select "li", text: /quantity is not a number/
+    assert_select "p[id$=quantity_error]", text: "Quantity is not a number"
     assert_select "input[name='change_order[title]'][value='Shelving']"
     assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Oak shelves']"
     assert_select "[data-nested-line-items-target=items] input[name$='[quantity]']", count: 1
@@ -215,7 +244,7 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_select "h1", "Edit change order"
-    assert_select "li", text: /quantity is not a number/
+    assert_select "p[id$=quantity_error]", text: "Quantity is not a number"
     assert_select "input[name='change_order[title]'][value='Unsaved title']"
     assert_select "[data-nested-line-items-target=items] input[name$='[description]'][value='Dimmer']"
     assert_equal original_title, @change_order.reload.title

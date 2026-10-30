@@ -275,7 +275,7 @@ class ResponsiveLayoutTest < ApplicationSystemTestCase
       fill_in "Password", with: "a long passphrase"
       fill_in "Confirm password", with: "a different passphrase"
       click_on "Create account"
-      assert_selector "[role=alert]", text: "Password confirmation doesn't match Password"
+      assert_selector "#user_password_confirmation_error", text: "Password confirmation doesn't match Password"
       assert_layout_fits(width, current_path)
     end
   end

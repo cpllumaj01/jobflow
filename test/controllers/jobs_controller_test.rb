@@ -45,8 +45,25 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
       end
 
       assert_response :unprocessable_entity
-      assert_select "li", text: "Customer must exist"
+      assert_select "#job_customer_id_error", text: "Customer must exist"
+      assert_select '#job_customer_id[aria-invalid="true"][aria-describedby="job_customer_id_error"]'
       assert_select "input[name='job[name]'][value='Bathroom Remodel']"
+    end
+  end
+
+  test "invalid job name renders inline on create and update with valid help associations preserved" do
+    [ :post, :patch ].each do |method|
+      public_send(method, method == :post ? jobs_url : job_url(@job), params: {
+        job: { customer_id: @job.customer_id, name: "", description: "Keep this description", estimated_completion_date: "2027-01-01" }
+      })
+
+      assert_response :unprocessable_entity
+      assert_select '#job_name[aria-invalid="true"][aria-describedby="job_name_error"]'
+      assert_select "#job_name_error", text: "Name can't be blank"
+      assert_select "textarea#job_description", text: "Keep this description"
+      assert_select '#job_estimated_completion_date[value="2027-01-01"][aria-describedby="estimated-completion-help"]:not([aria-invalid])'
+      assert_select "#estimated-completion-help", count: 1
+      assert_select '[role="alert"] li', count: 0
     end
   end
 

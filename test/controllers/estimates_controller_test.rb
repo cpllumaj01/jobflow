@@ -11,6 +11,35 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     sign_in_as @user
   end
 
+  test "multiple invalid nested rows have unique field errors and retain persisted identifiers" do
+    item = estimate_line_items(:cabinets)
+    patch job_estimate_url(@job), params: { estimate: { estimate_line_items_attributes: {
+      "0" => { id: item.id, description: "", quantity: 0, unit_price: -1 },
+      "1791555555000" => { description: "", quantity: -2, unit_price: "" }
+    } } }
+
+    assert_response :unprocessable_entity
+    assert_select '[role="alert"]', text: "We couldn’t save your changes. Review the errors below."
+    assert_select '[role="alert"] li', count: 0
+    assert_select '[data-nested-line-items-target=items] input[name$="[id]"][value=?]', item.id
+    rows = css_select("[data-nested-line-items-target=items] [data-testid=line-item]")
+    invalid_rows = rows.select { |row| row.at_css('[aria-invalid="true"]') }
+    assert_equal 2, invalid_rows.size
+    invalid_rows.each do |row|
+      %w[description quantity unit_price].each do |field|
+        input = row.at_css("input[name$='[#{field}]']")
+        assert_equal "true", input["aria-invalid"]
+        error = row.at_css("p[id='#{input['aria-describedby']}']")
+        assert error, "Error must be in the same row as its input"
+        assert_equal input["id"] + "_error", error["id"]
+        assert_match(/#{field.humanize}/, error.text)
+        assert_equal error, input.ancestors.find { |node| node["class"] == "field_with_errors" }.next_element
+      end
+    end
+    ids = css_select("[id]").map { |node| node["id"] }
+    assert_equal ids.uniq, ids
+  end
+
   test "downloads a PDF with estimate details without changing data" do
     @estimate.update!(status: "approved")
     original_attributes = @estimate.attributes

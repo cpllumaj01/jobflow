@@ -2,19 +2,7 @@
     url: job_estimate_path(job),
     class: "space-y-8" do |form| %>
 
-  <% if estimate.errors.any? %>
-    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-      <h2 class="text-sm font-semibold text-red-800">
-        <%= pluralize(estimate.errors.count, "error") %> prevented this estimate from being saved.
-      </h2>
-
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-red-700">
-        <% estimate.errors.full_messages.each do |message| %>
-          <li><%= message %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= render "shared/form_errors", record: estimate, inline_fields: %w[expires_on notes estimate_line_items.description estimate_line_items.quantity estimate_line_items.unit_price] %>
 
   <div class="rounded-xl border border-slate-300 bg-white p-4 shadow-sm sm:p-6">
     <h2 class="text-lg font-semibold text-slate-950">
@@ -26,8 +14,9 @@
         <%= form.label :expires_on,
             class: "block text-sm font-medium text-slate-700" %>
 
-        <%= form.date_field :expires_on,
+        <%= form.date_field :expires_on, **field_error_attributes(form, :expires_on),
             class: "mt-2 block min-w-0 w-full max-w-full appearance-none rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+        <%= field_errors(form, :expires_on) %>
       </div>
     </div>
 
@@ -35,9 +24,10 @@
       <%= form.label :notes,
           class: "block text-sm font-medium text-slate-700" %>
 
-      <%= form.textarea :notes,
+      <%= form.textarea :notes, **field_error_attributes(form, :notes),
           rows: 4,
           class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+      <%= field_errors(form, :notes) %>
     </div>
   </div>
 

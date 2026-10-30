@@ -1,17 +1,5 @@
 <%= form_with(model: job, class: "space-y-6") do |form| %>
-  <% if job.errors.any? %>
-    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-      <h2 class="text-sm font-semibold text-red-800">
-        <%= pluralize(job.errors.count, "error") %> prevented this job from being saved.
-      </h2>
-
-      <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-red-700">
-        <% job.errors.each do |error| %>
-          <li><%= error.full_message %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= render "shared/form_errors", record: job, inline_fields: %w[customer name description address status start_date estimated_completion_date] %>
 
   <div>
     <%= form.label :customer_id, "Customer",
@@ -22,32 +10,37 @@
         :id,
         :name,
         {},
+        **field_error_attributes(form, :customer_id, error_attribute: :customer),
         class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
+    <%= field_errors(form, :customer_id, error_attribute: :customer) %>
   </div>
 
   <div>
     <%= form.label :name,
         class: "block text-sm font-medium text-slate-700" %>
 
-    <%= form.text_field :name,
+    <%= form.text_field :name, **field_error_attributes(form, :name),
         class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+    <%= field_errors(form, :name) %>
   </div>
 
   <div>
     <%= form.label :description,
         class: "block text-sm font-medium text-slate-700" %>
 
-    <%= form.textarea :description,
+    <%= form.textarea :description, **field_error_attributes(form, :description),
         rows: 5,
         class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+    <%= field_errors(form, :description) %>
   </div>
 
   <div>
     <%= form.label :address,
         class: "block text-sm font-medium text-slate-700" %>
 
-    <%= form.text_field :address,
+    <%= form.text_field :address, **field_error_attributes(form, :address),
         class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+    <%= field_errors(form, :address) %>
   </div>
 
   <div>
@@ -57,7 +50,9 @@
     <%= form.select :status,
         Job::STATUSES.map { |status| [status.humanize, status] },
         {},
+        **field_error_attributes(form, :status),
         class: "mt-2 block min-w-0 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 cursor-pointer" %>
+    <%= field_errors(form, :status) %>
   </div>
 
   <div class="grid gap-6 sm:grid-cols-2">
@@ -65,17 +60,18 @@
       <%= form.label :start_date,
           class: "block text-sm font-medium text-slate-700" %>
 
-      <%= form.date_field :start_date,
+      <%= form.date_field :start_date, **field_error_attributes(form, :start_date),
           class: "mt-2 block min-w-0 w-full max-w-full appearance-none rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+      <%= field_errors(form, :start_date) %>
     </div>
 
     <div class="min-w-0">
       <%= form.label :estimated_completion_date, "Estimated completion (optional)",
           class: "block text-sm font-medium text-slate-700" %>
 
-      <%= form.date_field :estimated_completion_date,
-          aria: { describedby: "estimated-completion-help" },
+      <%= form.date_field :estimated_completion_date, **field_error_attributes(form, :estimated_completion_date, describedby: "estimated-completion-help"),
           class: "mt-2 block min-w-0 w-full max-w-full appearance-none rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-base sm:text-sm text-slate-950 shadow-sm focus:border-slate-500 transition-colors hover:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500" %>
+      <%= field_errors(form, :estimated_completion_date) %>
       <p id="estimated-completion-help" class="mt-2 text-sm text-slate-500">A planned date. Actual completion is recorded when you complete the job.</p>
     </div>
   </div>

@@ -22,7 +22,7 @@ class AuthenticationFormsTest < ActionDispatch::IntegrationTest
     } }
 
     assert_response :unprocessable_entity
-    assert_select '[role="alert"]', /Password confirmation doesn't match Password/
+    assert_select "#user_password_confirmation_error", "Password confirmation doesn't match Password"
     assert_select '#user_email_address[value="new@example.com"]'
     assert_registration_fields
   end

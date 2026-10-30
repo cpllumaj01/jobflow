@@ -22,6 +22,22 @@ class CustomersControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "invalid customer fields have inline errors and preserve other values on create and update" do
+    [ :post, :patch ].each do |method|
+      public_send(method, method == :post ? customers_url : customer_url(@customer), params: {
+        customer: { name: "", contact_name: "Sam", notes: "Keep these notes" }
+      })
+
+      assert_response :unprocessable_entity
+      assert_select '#customer_name[aria-invalid="true"][aria-describedby="customer_name_error"]'
+      assert_select "#customer_name_error", text: "Name can't be blank"
+      assert_select '#customer_contact_name[value="Sam"]:not([aria-invalid]):not([aria-describedby])'
+      assert_select "textarea#customer_notes", text: "Keep these notes"
+      assert_select '[role="alert"]', text: "We couldn’t save your changes. Review the errors below."
+      assert_select '[role="alert"] li', count: 0
+    end
+  end
+
   test "mobile customer records display placeholders for missing contact details" do
     @customer.update!(contact_name: nil, email: nil, address: nil)
 

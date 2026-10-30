@@ -1,0 +1,13 @@
+<% if record.errors.any? %>
+  <% messages = record.errors.reject { |error| inline_fields.include?(error.attribute.to_s) }.map(&:full_message).uniq %>
+  <div role="alert" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 [overflow-wrap:anywhere]">
+    <p class="font-semibold">We couldn’t save your changes. Review the errors below.</p>
+    <% if messages.any? %>
+      <ul class="mt-2 list-disc space-y-1 pl-5">
+        <% messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+<% end %>

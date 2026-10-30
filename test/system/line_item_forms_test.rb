@@ -103,7 +103,7 @@ class LineItemFormsTest < ApplicationSystemTestCase
 
     click_on @submit
 
-    assert_text "quantity is not a number"
+    assert_text "Quantity is not a number"
     assert_no_field "Description", with: removed.description
     assert removed.class.exists?(removed.id)
     within line_item("Additional work") do
@@ -209,7 +209,7 @@ class LineItemFormsTest < ApplicationSystemTestCase
 
     click_on @submit
 
-    assert_text "quantity is not a number"
+    assert_text "Quantity is not a number"
     assert_no_field "Description", with: removed.description
     assert removed.class.exists?(removed.id)
     within line_item("Additional work") do
