@@ -77,7 +77,8 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
     activity = @job.activities.sole
     assert_equal "change_order_created", activity.event
     assert_equal users(:one), activity.actor
-    assert_equal({ "change_order_id" => change_order.id, "title" => "Additional shelving", "new_status" => "draft" }, activity.metadata)
+    assert_equal({ "change_order_id" => change_order.id, "title" => "Additional shelving", "new_status" => "draft",
+                   "total" => "370.5", "line_item_count" => 2 }, activity.metadata)
   end
 
   test "show displays line items and calculated total" do
@@ -353,7 +354,8 @@ class ChangeOrdersControllerTest < ActionDispatch::IntegrationTest
             assert_equal "change_order_status_changed", activity.event
             assert_equal users(:one), activity.actor
             assert_equal({ "change_order_id" => @change_order.id, "title" => @change_order.title,
-                           "previous_status" => initial_status, "new_status" => target_status }, activity.metadata)
+                           "previous_status" => initial_status, "new_status" => target_status,
+                           "total" => "444.0", "line_item_count" => 2 }, activity.metadata)
           end
 
           assert_response :see_other

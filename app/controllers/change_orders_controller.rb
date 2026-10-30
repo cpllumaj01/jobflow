@@ -23,7 +23,8 @@ class ChangeOrdersController < ApplicationController
 
       if success
         @job.activities.create!(actor: Current.user, event: "change_order_created",
-          metadata: { change_order_id: @change_order.id, title: @change_order.title, new_status: @change_order.status })
+          metadata: { change_order_id: @change_order.id, title: @change_order.title, new_status: @change_order.status,
+                      total: @change_order.total.to_d.to_s("F"), line_item_count: @change_order.change_order_line_items.size })
       end
 
       success
@@ -68,7 +69,8 @@ class ChangeOrdersController < ApplicationController
           previous_status, new_status = @change_order.saved_change_to_status
           @job.activities.create!(actor: Current.user, event: "change_order_status_changed",
             metadata: { change_order_id: @change_order.id, title: @change_order.title,
-                        previous_status: previous_status, new_status: new_status })
+                        previous_status: previous_status, new_status: new_status,
+                        total: @change_order.total.to_d.to_s("F"), line_item_count: @change_order.change_order_line_items.size })
         end
 
         success

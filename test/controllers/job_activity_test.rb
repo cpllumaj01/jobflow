@@ -81,6 +81,57 @@ class JobActivityTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "creation and lifecycle snapshots retain only business details after edits and deletion" do
+    job = customers(:johnson).jobs.create!(name: "Deck")
+    post job_estimate_url(job), params: { estimate: {
+      notes: "Private proposal notes", estimate_line_items_attributes: [ { description: "Labor", quantity: "1.5", unit_price: "100.25" } ]
+    } }
+    assert_response :redirect
+    post job_change_orders_url(job), params: { change_order: {
+      title: "Add stairs", description: "Private scope notes",
+      change_order_line_items_attributes: [ { description: "Materials", quantity: "2", unit_price: "75.25" } ]
+    } }
+    assert_response :redirect
+    estimate = job.estimate
+    change_order = job.change_orders.sole
+    created = job.activities.order(:id).to_a
+    originals = created.map { |activity| activity.metadata.deep_dup }
+    assert_equal [ "150.375", "150.5" ], originals.map { |metadata| metadata["total"] }
+    assert_equal [ 1, 1 ], originals.map { |metadata| metadata["line_item_count"] }
+    assert_equal [ "draft", "draft" ], originals.map { |metadata| metadata["new_status"] }
+    assert_equal "Add stairs", originals.last["title"]
+    assert_equal %w[estimate_id new_status total line_item_count].sort, originals.first.keys.sort
+    assert_equal %w[change_order_id title new_status total line_item_count].sort, originals.last.keys.sort
+
+    estimate.estimate_line_items.sole.update!(quantity: 4)
+    change_order.update!(title: "Revised stairs")
+    change_order.change_order_line_items.create!(description: "Labor", quantity: 1, unit_price: 50)
+    assert_difference("Activity.count", 2) do
+      patch mark_sent_job_estimate_url(job)
+      patch mark_pending_job_change_order_url(job, change_order)
+    end
+    transitions = job.activities.order(:id).last(2)
+    snapshots = transitions.map { |activity| activity.metadata.deep_dup }
+    assert_equal [ "401.0", "200.5" ], snapshots.map { |metadata| metadata["total"] }
+    assert_equal [ 1, 2 ], snapshots.map { |metadata| metadata["line_item_count"] }
+    assert_equal "Revised stairs", snapshots.last["title"]
+    assert_equal [ "draft", "draft" ], snapshots.map { |metadata| metadata["previous_status"] }
+    assert_equal [ "sent", "pending" ], snapshots.map { |metadata| metadata["new_status"] }
+
+    estimate.destroy!
+    change_order.destroy!
+    assert_equal originals, created.map { |activity| activity.reload.metadata }
+    assert_equal snapshots, transitions.map { |activity| activity.reload.metadata }
+    get job_url(job)
+    assert_response :success
+    assert_select "section[aria-labelledby='activity-heading']" do
+      assert_select "p", text: "Add stairs"
+      assert_select "p", text: "Revised stairs"
+      %w[$150.38 $150.50 $401.00 $200.50].each { |total| assert_select "dd", text: total }
+      assert_select "li", text: /Private|Materials|Labor/, count: 0
+    end
+  end
+
   test "activity producing actions require authentication" do
     sign_out
 
@@ -193,23 +244,20 @@ class JobActivityTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "section[aria-labelledby='activity-heading']" do
       assert_select "li", count: 8
-      %w[sent approved rejected].each do |status|
-        assert_select "li", text: /Estimate status changed/ do
-          assert_select "dt", text: "Estimate id", count: 3
-          assert_select "dd", text: @estimate.id.to_s, count: 3
-          assert_select "dd", text: status
-        end
+      [ "Draft to Sent", "Sent to Approved", "Approved to Rejected" ].each do |transition|
+        assert_select "p", text: "Estimate changed from #{transition}"
       end
-      %w[pending approved rejected].each do |status|
-        assert_select "li", text: /Change order status changed/ do
-          assert_select "dd", text: "Add under-cabinet lighting", count: 3
-          assert_select "dd", text: status
-        end
+      [ "Draft to Pending", "Pending to Approved", "Approved to Rejected" ].each do |transition|
+        assert_select "p", text: "Change order changed from #{transition}"
       end
+      assert_select "p", text: "Add under-cabinet lighting", count: 3
+      assert_select "dd", text: "$27,000.00", count: 3
+      assert_select "dd", text: "$444.00", count: 3
       assert_select "p", text: "Attachment added"
       assert_select "p", text: "Attachment removed"
-      assert_select "dd", text: "project.txt", count: 2
-      assert_select "dd", text: /Renamed later/, count: 0
+      assert_select "p", text: "project.txt", count: 2
+      assert_select "li", text: /Renamed later/, count: 0
+      assert_select "dt", text: /Estimate id|Change order id|Attachment id/, count: 0
       assert_select "span", text: @user.email_address, count: 8
     end
   end
@@ -227,14 +275,12 @@ class JobActivityTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "section[aria-labelledby='activity-heading']" do
-      assert_select "li > p:first-child" do |events|
-        assert_equal [ "Change order created", "Estimate created", "Job status changed" ], events.map(&:text)
+      assert_select "li > div > p:first-child" do |events|
+        assert_equal [ "Change order created", "Estimate created", "Job changed from Quoted to In progress" ], events.map(&:text)
       end
-      assert_select "dd", text: "<script>alert('change')</script>"
-      assert_select "dt", text: "Previous status"
-      assert_select "dd", text: "quoted"
-      assert_select "dt", text: "New status", count: 3
-      assert_select "dd", text: "in_progress"
+      assert_select "p", text: "<script>alert('change')</script>"
+      assert_select "dt", text: "Status", count: 2
+      assert_select "dd", text: "Draft", count: 2
       assert_select "span", text: @user.email_address, count: 2
       assert_select "time[datetime=?]", oldest.created_at.iso8601,
         text: oldest.created_at.strftime("%b %-d, %Y at %-I:%M %p %Z")
@@ -249,7 +295,7 @@ class JobActivityTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_url
   end
 
-  test "timeline renders incomplete metadata as ordinary label value pairs" do
+  test "timeline safely renders incomplete and legacy metadata without looking up current values" do
     @job.activities.create!(event: "job_status_changed", metadata: { previous_status: "quoted" })
     @job.activities.create!(event: "estimate_status_changed", metadata: { estimate_id: 123, new_status: nil })
     @job.activities.create!(event: "change_order_status_changed", metadata: { new_status: "approved" })
@@ -262,15 +308,15 @@ class JobActivityTest < ActionDispatch::IntegrationTest
     assert_select "section[aria-labelledby='activity-heading']" do
       assert_select "p", text: "Job status changed"
       assert_select "p", text: "Estimate status changed"
-      assert_select "p", text: "Change order status changed"
+      assert_select "p", text: "Change order marked as Approved"
       assert_select "p", text: "Attachment removed"
       assert_select "p", text: "Custom event"
       assert_select "dt", text: "Previous status"
-      assert_select "dd", text: "quoted"
-      assert_select "dt", text: "Estimate id"
-      assert_select "dd", text: "123"
+      assert_select "dd", text: "Quoted"
+      assert_select "dt", text: "Estimate id", count: 0
+      assert_select "dd", text: "123", count: 0
+      assert_select "dt", text: "Total", count: 0
       assert_select "dd", text: "—"
-      assert_select "dd", text: "approved"
       assert_select "li", text: /Attachment removed|Custom event/ do
         assert_select "dl", count: 0
       end

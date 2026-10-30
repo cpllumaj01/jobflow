@@ -38,7 +38,8 @@ class EstimatesController < ApplicationController
 
       if success
         @job.activities.create!(actor: Current.user, event: "estimate_created",
-          metadata: { estimate_id: @estimate.id, new_status: @estimate.status })
+          metadata: { estimate_id: @estimate.id, new_status: @estimate.status,
+                      total: @estimate.total.to_d.to_s("F"), line_item_count: @estimate.estimate_line_items.size })
       end
 
       success
@@ -90,7 +91,8 @@ class EstimatesController < ApplicationController
         if success && @estimate.saved_change_to_status?
           previous_status, new_status = @estimate.saved_change_to_status
           @job.activities.create!(actor: Current.user, event: "estimate_status_changed",
-            metadata: { estimate_id: @estimate.id, previous_status: previous_status, new_status: new_status })
+            metadata: { estimate_id: @estimate.id, previous_status: previous_status, new_status: new_status,
+                        total: @estimate.total.to_d.to_s("F"), line_item_count: @estimate.estimate_line_items.size })
         end
 
         success

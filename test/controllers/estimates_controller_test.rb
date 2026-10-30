@@ -174,7 +174,8 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
     activity = job.activities.sole
     assert_equal "estimate_created", activity.event
     assert_equal @user, activity.actor
-    assert_equal({ "estimate_id" => estimate.id, "new_status" => "draft" }, activity.metadata)
+    assert_equal({ "estimate_id" => estimate.id, "new_status" => "draft",
+                   "total" => "650.0", "line_item_count" => 2 }, activity.metadata)
   end
 
   test "create redirects when job already has estimate" do
@@ -353,7 +354,7 @@ class EstimatesControllerTest < ActionDispatch::IntegrationTest
             assert_equal "estimate_status_changed", activity.event
             assert_equal @user, activity.actor
             assert_equal({ "estimate_id" => @estimate.id, "previous_status" => initial_status,
-                           "new_status" => target_status }, activity.metadata)
+                           "new_status" => target_status, "total" => "27000.0", "line_item_count" => 3 }, activity.metadata)
           end
 
           assert_response :see_other

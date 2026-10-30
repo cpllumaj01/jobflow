@@ -67,6 +67,23 @@ class ActivitiesHelperTest < ActionView::TestCase
     assert_includes activity_metadata_value({ "count" => 2 }), "\n"
   end
 
+  test "business values are formatted only for their specific metadata keys" do
+    assert_equal "$1,234.57", activity_metadata_value("1234.567", "total")
+    assert_equal "$0.00", activity_metadata_value(0, "total")
+    assert_equal "-$50.25", activity_metadata_value("-50.25", "total")
+    assert_equal "In progress", activity_metadata_value("in_progress", "new_status")
+    assert_equal "Draft", activity_metadata_value("draft", "previous_status")
+    assert_equal "1 line item", activity_metadata_value(1, "line_item_count")
+    assert_equal "2 line items", activity_metadata_value(2, "line_item_count")
+    assert_equal "0 line items", activity_metadata_value(0, "line_item_count")
+    [ nil, "unknown", { "amount" => 10 }, [ 1, 2 ], false ].each do |value|
+      %w[total line_item_count].each do |key|
+        assert_equal activity_metadata_value(value), activity_metadata_value(value, key)
+      end
+    end
+    assert_equal "1234.567", activity_metadata_value("1234.567", "reference")
+  end
+
   test "partial renders arbitrary labels and values and escapes all metadata" do
     long_value = "<script>alert('value')</script>#{'unbroken' * 100}"
     activity = Activity.new(trackable: customers(:johnson), event: "customer_updated", created_at: Time.current,
@@ -75,7 +92,7 @@ class ActivitiesHelperTest < ActionView::TestCase
 
     render partial: "activities/activity", locals: { activity: activity }
 
-    assert_select "li > p", text: "Customer updated"
+    assert_select "li p", text: "Customer updated"
     assert_select "dt", text: "Contract value"
     assert_select "dt", text: "External id"
     assert_select "dd", text: "123"
@@ -95,10 +112,27 @@ class ActivitiesHelperTest < ActionView::TestCase
 
     render partial: "activities/activity", locals: { activity: activity.reload }
 
-    assert_select "li > p", text: "Customer updated"
+    assert_select "li p", text: "Customer updated"
     assert_select "dl", count: 0
     assert_select "span", count: 0
     assert_select "time[datetime=?]", activity.created_at.iso8601,
       text: activity.created_at.strftime("%b %-d, %Y at %-I:%M %p %Z")
+  end
+
+  test "business descriptions and promoted details remain escaped and filtered" do
+    activity = Activity.new(event: "change_order_status_changed", actor: users(:one), created_at: Time.current,
+      metadata: { previous_status: "draft", new_status: "<script>alert(1)</script>",
+        title: "<img src=x onerror=alert(1)>", filename: "secret_contract.pdf",
+        total: "<script>amount</script>", details: { password: "private password", access_token: "private token" } })
+
+    render partial: "activities/activity", locals: { activity: activity }
+
+    assert_select "p", text: /Change order changed from Draft to <script>/
+    assert_select "p", text: "<img src=x onerror=alert(1)>"
+    assert_select "p", text: "secret_contract.pdf"
+    assert_select "dd", text: "<script>amount</script>"
+    assert_select "dd", text: /\[FILTERED\]/
+    assert_select "li", text: /private password|private token/, count: 0
+    assert_select "script, img", count: 0
   end
 end

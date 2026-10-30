@@ -1,20 +1,30 @@
-<li class="py-4">
-  <p class="break-words text-sm font-medium text-slate-900"><%= activity_event_name(activity) %></p>
-  <% metadata = activity_metadata(activity) %>
-  <% if metadata.any? %>
-    <dl class="mt-2 space-y-1 text-sm">
-      <% metadata.each do |key, value| %>
-        <div class="grid gap-x-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)]">
-          <dt class="min-w-0 break-words font-medium text-slate-600"><%= key.to_s.humanize(keep_id_suffix: true) %></dt>
-          <dd class="min-w-0 whitespace-pre-wrap break-words text-slate-700"><%= activity_metadata_value(value) %></dd>
+<% metadata = activity_metadata(activity) %>
+<% description = activity_description(activity, metadata) %>
+<% details = metadata.except("title", "filename", "estimate_id", "change_order_id", "attachment_id") %>
+<% details = details.except("previous_status", "new_status") if description != activity_event_name(activity) %>
+<li class="py-5 [overflow-wrap:anywhere]">
+  <div class="grid min-w-0 gap-x-6 gap-y-1 md:grid-cols-[minmax(0,1fr)_auto]">
+    <p class="min-w-0 text-sm font-semibold text-slate-900"><%= description %></p>
+    <p class="min-w-0 text-xs leading-5 text-slate-500 md:col-start-1 md:row-start-2">
+      <% if activity.actor.present? %>
+        By <span class="font-medium text-slate-600"><%= activity.actor.email_address %></span>
+      <% else %>
+        Actor unavailable
+      <% end %>
+    </p>
+    <time class="text-xs leading-5 text-slate-500 md:col-start-2 md:row-start-1 md:text-right" datetime="<%= activity.created_at.iso8601 %>"><%= activity.created_at.strftime("%b %-d, %Y at %-I:%M %p %Z") %></time>
+  </div>
+  <% metadata.slice("title", "filename").each_value do |value| %>
+    <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700"><%= activity_metadata_value(value) %></p>
+  <% end %>
+  <% if details.any? %>
+    <dl class="mt-2 flex min-w-0 flex-wrap gap-x-6 gap-y-2 text-sm">
+      <% details.each do |key, value| %>
+        <div class="min-w-0 max-w-full">
+          <dt class="text-xs text-slate-500"><%= { "new_status" => "Status", "line_item_count" => "Scope" }.fetch(key) { key.to_s.humanize(keep_id_suffix: true) } %></dt>
+          <dd class="whitespace-pre-wrap font-medium text-slate-700"><%= activity_metadata_value(value, key) %></dd>
         </div>
       <% end %>
     </dl>
   <% end %>
-  <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-    <% if activity.actor.present? %>
-      <span class="break-words"><%= activity.actor.email_address %></span>
-    <% end %>
-    <time datetime="<%= activity.created_at.iso8601 %>"><%= activity.created_at.strftime("%b %-d, %Y at %-I:%M %p %Z") %></time>
-  </div>
 </li>
