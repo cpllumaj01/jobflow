@@ -1,34 +1,82 @@
 # JobFlow
 
-JobFlow is a Ruby on Rails application for managing contractor projects from customer intake through estimates, change orders, and completion.
+JobFlow helps contractors manage customers and projects from the first estimate to completed work. It brings scope, approvals, contract values, and project files into one job workspace, so the agreed price stays clear as work changes.
 
 **Customer → Job → Estimate → Change Orders → Completion**
 
-The job workspace brings project details, pricing, changes, and files together. The project demonstrates Rails domain modeling, relational data, authenticated ownership, nested resources, lifecycle actions, derived financial calculations, file handling, and a small JSON API.
-
 ## Live Demo
 
-**[Open the live JobFlow demo](https://jobflow.cpllumaj.dev)**
+**[Open JobFlow](https://jobflow.cpllumaj.dev)** · [Follow the 90-second walkthrough](docs/DEMO_WALKTHROUGH.md)
 
-- **Email:** `demo@jobflow.test`
-- **Password:** `passwordpassword`
+| Demo email | Demo password |
+| --- | --- |
+| `demo@jobflow.test` | `passwordpassword` |
 
-Sign in to explore fictional customers, jobs, estimates, change orders, and a sample attachment. These credentials are intentionally public and belong only to the demo account.
+These credentials are intentionally public and belong only to the demo account. Explore the fictional projects and download sample documents. **Leave shared demo data unchanged; create a separate account to try edits, uploads, approvals, or 2FA.**
+
+![JobFlow dashboard showing workload, pending decisions, job status drill-downs, and approved contract value](docs/screenshots/dashboard.png)
+
+*The dashboard connects the business overview to filtered jobs and separates approved contract value from pending work.*
 
 ## Features
 
-- Session-based sign-in, registration, sign-out, and password reset.
-- Optional authenticator-app two-factor authentication with single-use recovery codes and account security settings.
-- Customer management and jobs with status, address, description, and scheduling dates.
-- Estimates with quantity/unit-price line items and draft, sent, approved, and rejected statuses.
-- Estimate PDF downloads with project details, line items, and totals.
-- Add and remove estimate and change-order line items directly in forms.
-- Change orders with line items and draft, pending, approved, and rejected statuses.
-- Contract values calculated from approved estimates and approved change orders.
-- Dashboard counts for customers, jobs, active jobs, pending estimates, and pending changes, plus total current contract value.
-- Job search by job name, address, or customer name, combined with status filtering.
-- Multiple job attachments through Active Storage, with owner-only downloads, individual removal, and a 20 MB per-file limit.
-- Read-only, versioned Jobs API scoped to the signed-in user.
+- **Keep customer and project context together.** Manage contacts, job details, scheduling dates, and statuses; search jobs by name, address, or customer and combine status filters.
+- **Price work and track scope changes.** Build estimates and change orders from quantity/unit-price line items. Current contract value includes only approved estimates and approved changes.
+- **Prepare documents and keep files with the job.** Export estimate PDFs and attach plans, photos, scope notes, or spreadsheets, with owner-only downloads and upload validation.
+- **See what needs attention.** Review active jobs, pending estimates, and pending changes on the dashboard; follow status changes and recorded pricing snapshots in the job's Activity history.
+- **Work across screen sizes with a personal account.** Responsive layouts, session-based authentication, password reset, optional authenticator-app 2FA, and ownership isolation keep each user's projects separate.
+
+## Engineering highlights
+
+- **Rails 8 and PostgreSQL:** relational modeling, nested resources, decimal pricing, and derived financial totals without redundant stored balances.
+- **Server-rendered ERB and Tailwind CSS:** Turbo navigation/filtering and small Stimulus controllers for line items, upload feedback, and navigation; JavaScript served through import maps.
+- **Authorization at resource boundaries:** user-scoped queries, nested ownership checks, protected attachment routes, and a read-only Jobs JSON API using the same authenticated session.
+- **Testing and delivery:** Minitest and Capybara/Selenium coverage for workflows and ownership; GitHub Actions tests, lint, and security checks; Docker-based Railway deployment with PostgreSQL, persistent attachments, and background email delivery. See the [deployment guide](docs/DEPLOYMENT.md) for hosting configuration.
+
+## Screenshots
+
+Captured from the live demo on October 30, 2026. Desktop captures use the same 1400 × 1000 viewport, framed to the relevant content; the mobile view uses Chrome emulation at 390 × 844. All project details shown are fictional demo content. Click an image to inspect it at full size.
+
+### Job workspace
+
+Customer context, job status controls, and approved pricing in one view. The kitchen's $25,325 estimate plus $635 in approved changes produces a $25,960 contract value.
+
+![Kitchen Renovation workspace with status controls, customer details, and approved contract summary](docs/screenshots/job-workspace.png)
+
+<details>
+<summary>Estimate and change orders</summary>
+
+### Estimate
+
+Itemized scope, quantity × unit price calculations, approval status, and **Download PDF** for a portable estimate.
+
+![Approved kitchen estimate with PDF download, line items, and a $25,325 total](docs/screenshots/estimate.png)
+
+### Change orders
+
+Approved, pending, draft, and rejected changes remain visible together; only approved changes affect the contract value.
+
+![Kitchen change orders showing four approval states and their amounts](docs/screenshots/change-orders.png)
+
+</details>
+
+<details>
+<summary>Mobile view</summary>
+
+### Mobile job workspace
+
+The job header, actions, and financial summary adapt to a narrow screen. This is an emulated browser capture, not a physical-device test.
+
+<img src="docs/screenshots/job-mobile.png" alt="Kitchen Renovation on a narrow mobile viewport with Menu navigation and stacked financial summaries" width="300">
+
+</details>
+
+## Technical reference
+
+Expand the sections below for implementation and development details.
+
+<details>
+<summary>Stack and domain implementation</summary>
 
 ## Stack
 
@@ -39,7 +87,7 @@ Versions below come from `.ruby-version` and `Gemfile.lock`.
 | Runtime | Ruby 4.0.7; Bundler 2.6.2 |
 | Framework | Rails 8.1.4, Active Record, Puma |
 | Database | PostgreSQL (`pg` 1.7.0; server version is not pinned) |
-| Views and styling | ERB, Tailwind CSS 4.3.3 via `tailwindcss-rails` 4.6.0 |
+| Views and styling | ERB, Tailwind CSS 4.3.3 via `tailwindcss-rails` 4.7.0 |
 | Browser behavior | Turbo, Stimulus via `stimulus-rails` 1.3.4, import maps |
 | Files | Active Storage; local disk in development and test, persistent storage on Railway in production |
 | PDF generation | Prawn and prawn-table |
@@ -83,6 +131,11 @@ The browser checks every selected file's size and extension immediately and bloc
 Before handing a batch to Active Storage, the server checks actual uploaded sizes and uses Active Storage's existing Marcel library to detect content without filename or declared-MIME fallback. The detected format must match the extension; a misleading client MIME is replaced with the detected type. TXT/CSV lack reliable signatures, so they additionally require valid UTF-8 text (including ASCII), without binary control bytes. Empty files are rejected. ZIP signatures alone do not qualify as DOCX/XLSX: Marcel must recognize the corresponding Office document structure. This is format identification, not full document parsing, macro inspection, or malware scanning; permitted documents can still contain unsafe content. Older text encodings must be exported as UTF-8.
 
 Any invalid member rejects the entire batch before blobs, attachments, or activity events are created. Successful attachment changes and their activity records remain in the existing locked transaction. Downloads retain owner checks and an attachment disposition.
+
+</details>
+
+<details>
+<summary>Local setup and demo data</summary>
 
 ## Run locally
 
@@ -160,6 +213,11 @@ The production `demo:bootstrap` task also accepts `SEED_PAGINATION=true` to load
 
 The live demo account is populated with production demo data. Demo seeds abort in production, and production database preparation skips automatic seeding. To explicitly refresh the deployed demo account, use the protected `demo:bootstrap` task described in [the production demo workflow](docs/DEPLOYMENT.md#production-demo-data).
 
+</details>
+
+<details>
+<summary>Read-only Jobs API</summary>
+
 ## Read-only Jobs API
 
 Sign in through the application, then open these endpoints in the same browser session:
@@ -210,6 +268,11 @@ The show response uses a `job` wrapper with the same core fields, plus:
 
 Monetary values are returned as decimal strings. The index is unpaginated and ordered newest first. There are no API write endpoints.
 
+</details>
+
+<details>
+<summary>Tests and CI</summary>
+
 ## Tests
 
 With PostgreSQL running:
@@ -233,36 +296,10 @@ To run the API tests alone:
 bin/rails test test/controllers/api/v1/jobs_controller_test.rb
 ```
 
+</details>
+
 ## Production deployment
 
 JobFlow is deployed on **Railway** at **[jobflow.cpllumaj.dev](https://jobflow.cpllumaj.dev)**, with a custom domain managed through **Cloudflare**, PostgreSQL, and persistent storage for Active Storage attachments. Production password-reset email uses Resend over HTTPS with Solid Queue. The live demo credentials are listed above.
 
 See [the production deployment checklist](docs/DEPLOYMENT.md) for database, secrets, persistent storage, TLS, mail delivery, build requirements, and the production demo refresh workflow. The generated Kamal deployment template remains separate from the current Railway deployment and requires hosting-specific configuration.
-
-## Screenshots
-
-Screenshots show the seeded demo environment.
-
-### Dashboard
-
-Overview of customers, active work, pending approvals, and current contract value.
-
-![JobFlow dashboard](docs/screenshots/dashboard.png)
-
-### Job workspace
-
-Central job view with project details, pricing summaries, change orders, and attachments.
-
-![JobFlow job workspace](docs/screenshots/job-workspace.png)
-
-### Estimate
-
-Estimate line items, calculated total, status, and lifecycle actions.
-
-![JobFlow estimate](docs/screenshots/estimate.png)
-
-### Change Orders
-
-Job changes with line-item totals and approval statuses.
-
-![JobFlow change orders](docs/screenshots/change-orders.png)
