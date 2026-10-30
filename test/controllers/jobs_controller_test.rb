@@ -235,17 +235,42 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "invalid quick status updates show validation errors and the persisted status" do
-    [ "unknown", "", nil ].each do |status|
-      assert_no_difference("Activity.count") do
-        patch update_status_job_url(@job), params: { job: { status: status } }
+    %w[in_progress completed].each do |persisted_status|
+      @job.update!(status: persisted_status)
+      completion = @job.completed_at
+      [ "unknown", "", nil ].each do |status|
+        assert_no_difference("Activity.count") do
+          patch update_status_job_url(@job), params: { job: { status: status } }
+        end
+        assert_response :unprocessable_entity
+        assert_equal persisted_status, @job.reload.status
+        completion ? assert_equal(completion, @job.completed_at) : assert_nil(@job.completed_at)
+        assert_select "main", text: /Status is not included in the list/
+        assert_select "#job-status", text: persisted_status.humanize
+        assert_select "button[aria-current='true'][disabled]", text: /#{Regexp.escape(persisted_status.humanize)}\s+Current/
+        assert_select "dt", text: "Completed", count: persisted_status == "completed" ? 1 : 0
       end
-      assert_response :unprocessable_entity
-      assert_equal "in_progress", @job.reload.status
-      assert_nil @job.completed_at
-      assert_select "main", text: /Status is not included in the list/
-      assert_select "select[name='job[status]'] option[selected]", text: "In progress"
-      assert_select "dt", text: "Completed", count: 0
     end
+  end
+
+  test "header status forms preserve CSRF protection" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    get job_url(@job)
+    assert_select "#job-header form[action=?]", update_status_job_path(@job), count: Job::STATUSES.size - 1 do
+      assert_select "input[name='authenticity_token']", count: Job::STATUSES.size - 1
+    end
+    token = css_select("#job-header input[name='authenticity_token']").first["value"]
+    assert_no_difference("Activity.count") do
+      patch update_status_job_url(@job), params: { job: { status: "quoted" } }
+    end
+    assert_response :unprocessable_entity
+    assert_equal "in_progress", @job.reload.status
+    patch update_status_job_url(@job), params: { authenticity_token: token, job: { status: "quoted" } }
+    assert_response :see_other
+    assert_equal "quoted", @job.reload.status
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
   end
 
   test "quick status updates require a scalar status and authentication and ownership" do
@@ -325,12 +350,20 @@ class JobsControllerTest < ActionDispatch::IntegrationTest
       @job.update!(status: status)
       get job_url(@job)
       assert_response :success
-      assert_select "section[aria-labelledby='job-status-heading']" do
-        assert_select "form[action=?]", update_status_job_path(@job)
-        assert_select "select[name='job[status]'] option" do |options|
-          assert_equal Job::STATUSES, options.map { |option| option["value"] }
+      assert_select "section[aria-labelledby='job-status-heading']", count: 0
+      assert_select "#job-header" do
+        assert_select "#job-status", text: status.humanize
+        assert_select "summary", text: "Change status"
+        assert_select "button[aria-current='true'][disabled]", text: /#{Regexp.escape(status.humanize)}\s+Current/, count: 1
+        assert_select "form[action=?] input[name='job[status]']", update_status_job_path(@job) do |inputs|
+          assert_equal Job::STATUSES - [ status ], inputs.map { |input| input["value"] }.sort_by { |value| Job::STATUSES.index(value) }
         end
+        assert_select "input[name='_method'][value='patch']", count: Job::STATUSES.size - 1
         assert_select "button[type='submit']", text: "Complete job", count: %w[completed cancelled].include?(status) ? 0 : 1
+        assert_select "a[href=?]", edit_job_path(@job), text: "Edit job"
+        assert_select "select", count: 0
+        assert_select "input[type='submit'][value='Update status']", count: 0
+        assert_select "details[name='job-status-confirmation']", count: status == "completed" ? 5 : (status == "cancelled" ? 0 : 1)
       end
       assert_select "dt", text: "Completed", count: status == "completed" ? 1 : 0
     end

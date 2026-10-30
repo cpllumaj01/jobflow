@@ -1,0 +1,45 @@
+<div class="inline-flex items-start gap-2">
+  <span id="job-status" class="mt-2.5 <%= status_badge_classes(job.status) %>">
+    <%= job.status.humanize %>
+  </span>
+
+  <details data-controller="status-dropdown"
+      data-action="keydown.esc->status-dropdown#escape pointerdown@window->status-dropdown#dismiss focusout->status-dropdown#dismissFocus toggle->status-dropdown#position resize@window->status-dropdown#position scroll@window->status-dropdown#position turbo:before-cache@document->status-dropdown#close"
+      class="relative w-36 shrink-0">
+    <summary data-status-dropdown-target="toggle" aria-describedby="job-status" class="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 [&::-webkit-details-marker]:hidden">
+      Change status
+      <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" class="size-4 shrink-0"><path fill-rule="evenodd" d="M5.22 7.22a.75.75 0 0 1 1.06 0L10 10.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>
+    </summary>
+    <div data-status-dropdown-target="panel" class="relative -ml-20 z-10 my-2 max-h-80 w-56 sm:absolute sm:right-0 sm:top-full sm:ml-0 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-slate-300 bg-white p-1 shadow-lg">
+      <% Job::STATUSES.each do |status| %>
+        <%# Completion has one prominent action in the header. %>
+        <% next if status == "completed" && !%w[completed cancelled].include?(job.status) %>
+        <% if status == job.status %>
+          <button type="button" disabled aria-current="true" class="flex min-h-11 w-full items-center justify-between gap-3 rounded-md bg-slate-100 px-3 py-2 text-left text-sm font-semibold text-slate-950">
+            <%= status.humanize %>
+            <span class="text-xs font-medium text-slate-500">Current</span>
+          </button>
+        <% elsif status == "cancelled" || job.status == "completed" %>
+          <details name="job-status-confirmation">
+            <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 [&::-webkit-details-marker]:hidden">
+              <%= status.humanize %>
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" class="size-4 text-slate-400"><path d="m8 6 4 4-4 4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </summary>
+            <div class="px-3 pb-3">
+              <p class="mb-2 text-sm text-slate-600">
+                <%= job.status == "completed" ? "Reopen as #{status.humanize.downcase}? Previous completion stays in Activity." : "Cancel this job?" %>
+              </p>
+              <%= button_to(job.status == "completed" ? "Reopen job" : "Cancel job", update_status_job_path(job), method: :patch,
+                  params: { job: { status: status } },
+                  class: "min-h-11 w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900") %>
+            </div>
+          </details>
+        <% else %>
+          <%= button_to status.humanize, update_status_job_path(job), method: :patch,
+              params: { job: { status: status } },
+              class: "min-h-11 w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900" %>
+        <% end %>
+      <% end %>
+    </div>
+  </details>
+</div>
