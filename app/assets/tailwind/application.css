@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--color-red-500);
+  &:focus {
+    border-color: var(--color-red-600);
+    outline-color: var(--color-red-600);
+  }
+}
+
 /* Keep editable controls legible without triggering input-focus zoom on touch browsers,
    including tablets and landscape viewports. Desktop control sizing stays unchanged. */
 @media (width < 40rem), (any-pointer: coarse) {

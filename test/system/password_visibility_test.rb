@@ -46,8 +46,13 @@ class PasswordVisibilityTest < ApplicationSystemTestCase
     assert_equal "another long passphrase", find_field("Confirm password").value
     click_on "Create account"
 
-    assert_selector '[role="alert"]', text: "Password confirmation doesn't match Password"
+    assert_selector "#user_password_confirmation_error", text: "Password confirmation doesn't match Password"
+    assert_selector '[role="alert"]', text: "We couldn’t save your changes."
     assert_field "Email address", with: "visibility@example.com"
+    assert_field "Password", with: "", exact: true
+    assert_field "Confirm password", with: ""
+    assert_selector '#user_password[aria-describedby="password-requirements"]:not([aria-invalid])'
+    assert_selector '#user_password_confirmation[aria-invalid="true"][aria-describedby="user_password_confirmation_error"]'
     assert_selector '#user_password[type="password"]'
     assert_selector '#user_password_confirmation[type="password"]'
     fill_in "Password", with: "a long passphrase", exact: true
