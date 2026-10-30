@@ -25,6 +25,13 @@ module ActivitiesHelper
   end
 
   def activity_metadata_value(value, key = nil)
+    if %w[completed_at previous_completed_at].include?(key) && value.is_a?(String)
+      begin
+        return activity_timestamp(Time.zone.iso8601(value))
+      rescue ArgumentError
+        # Preserve invalid values using the generic rendering below.
+      end
+    end
     if %w[previous_status new_status].include?(key) && value.is_a?(String) && value.present?
       return value.humanize
     end
@@ -45,5 +52,9 @@ module ActivitiesHelper
     else
       value.to_s.presence || "—"
     end
+  end
+
+  def activity_timestamp(value)
+    l(value.in_time_zone, format: "%b %-d, %Y at %-I:%M %p %Z")
   end
 end

@@ -84,6 +84,54 @@ class ActivitiesHelperTest < ActionView::TestCase
     assert_equal "1234.567", activity_metadata_value("1234.567", "reference")
   end
 
+  test "known timestamp metadata uses the application time zone and preserves the instant" do
+    %w[completed_at previous_completed_at].each do |key|
+      Time.use_zone("UTC") do
+        assert_equal "Oct 30, 2026 at 1:52 PM UTC", activity_metadata_value("2026-10-30T13:52:11.955001Z", key)
+        assert_equal "Oct 30, 2026 at 1:52 PM UTC", activity_metadata_value("2026-10-30T09:52:11.955001-04:00", key)
+      end
+      Time.use_zone("America/New_York") do
+        assert_equal "Oct 30, 2026 at 9:52 AM EDT", activity_metadata_value("2026-10-30T13:52:11.955001Z", key)
+        assert_equal "Dec 31, 2025 at 9:15 PM EST", activity_metadata_value("2026-01-01T02:15:00Z", key)
+      end
+    end
+  end
+
+  test "invalid timestamps and unrelated metadata retain generic rendering" do
+    %w[completed_at previous_completed_at].each do |key|
+      [ nil, "", " ", "invalid", "tomorrow", "2026-13-45T99:99:99Z", "[FILTERED]",
+        "<script>alert(1)</script>", 123, false, [ "2026-10-30T13:52:11Z" ], { "value" => "invalid" } ].each do |value|
+        assert_equal activity_metadata_value(value), activity_metadata_value(value, key)
+      end
+    end
+    timestamp = "2026-10-30T13:52:11.955001Z"
+    [ nil, "filename", "notes", "custom_at" ].each do |key|
+      assert_equal timestamp, activity_metadata_value(timestamp, key)
+    end
+  end
+
+  test "timeline timestamps share formatting without changing stored metadata or filtering" do
+    activity = jobs(:kitchen_renovation).activities.create!(event: "job_status_changed",
+      created_at: "2026-10-30T13:52:11.955001Z", metadata: {
+        completed_at: "2026-10-30T13:52:11.955001Z", previous_completed_at: "2026-01-01T02:15:00Z",
+        details: { access_token: "private token" }
+      })
+    original = activity.reload.attributes.deep_dup
+
+    Time.use_zone("America/New_York") do
+      render partial: "activities/activity", locals: { activity: activity }
+    end
+
+    assert_select "time[datetime=?]", activity.created_at.iso8601, text: "Oct 30, 2026 at 9:52 AM EDT"
+    assert_select "dt", text: "Completed at"
+    assert_select "dd", text: "Oct 30, 2026 at 9:52 AM EDT"
+    assert_select "dt", text: "Previous completed at"
+    assert_select "dd", text: "Dec 31, 2025 at 9:15 PM EST"
+    assert_select "dd", text: /\[FILTERED\]/
+    assert_select "li", text: /private token/, count: 0
+    assert_equal original, activity.reload.attributes
+  end
+
   test "partial renders arbitrary labels and values and escapes all metadata" do
     long_value = "<script>alert('value')</script>#{'unbroken' * 100}"
     activity = Activity.new(trackable: customers(:johnson), event: "customer_updated", created_at: Time.current,
@@ -123,6 +171,7 @@ class ActivitiesHelperTest < ActionView::TestCase
     activity = Activity.new(event: "change_order_status_changed", actor: users(:one), created_at: Time.current,
       metadata: { previous_status: "draft", new_status: "<script>alert(1)</script>",
         title: "<img src=x onerror=alert(1)>", filename: "secret_contract.pdf",
+        completed_at: "<script>timestamp</script>",
         total: "<script>amount</script>", details: { password: "private password", access_token: "private token" } })
 
     render partial: "activities/activity", locals: { activity: activity }
@@ -131,6 +180,7 @@ class ActivitiesHelperTest < ActionView::TestCase
     assert_select "p", text: "<img src=x onerror=alert(1)>"
     assert_select "p", text: "secret_contract.pdf"
     assert_select "dd", text: "<script>amount</script>"
+    assert_select "dd", text: "<script>timestamp</script>"
     assert_select "dd", text: /\[FILTERED\]/
     assert_select "li", text: /private password|private token/, count: 0
     assert_select "script, img", count: 0
