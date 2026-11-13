@@ -47,7 +47,7 @@ gem "image_processing", "~> 2.2"
 gem "json", "3.1.0"
 
 # Official HTTPS delivery integration for Action Mailer.
-gem "resend", "~> 1.18"
+gem "resend", "~> 1.19"
 
 # Generate estimate downloads with paginated line item tables.
 gem "prawn", "~> 2.5"
